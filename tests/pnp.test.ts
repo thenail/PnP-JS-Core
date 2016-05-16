@@ -9,10 +9,6 @@ describe("PnP", () => {
         expect(pnp.util).to.not.be.null;
     });
 
-    it("sharepoint should not be null", () => {
-        expect(pnp.sharepoint).to.not.be.null;
-    });
-
     it("storage should not be null", () => {
         expect(pnp.storage).to.not.be.null;
     });

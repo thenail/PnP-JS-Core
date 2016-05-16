@@ -11,7 +11,6 @@ import { File } from "./files";
 import { TypedHash } from "../../collections/collections";
 import { Util } from "../../utils/util";
 import * as Types from "./types";
-import { Locale } from "../../types/locale";
 import { List } from "./lists";
 
 
@@ -36,7 +35,7 @@ export class Webs extends QueryableCollection {
         url: string,
         description = "",
         template = "STS",
-        language = Locale.EnglishUnitedStates,
+        language = 1033,
         inheritPermissions = true,
         additionalSettings: TypedHash<string | number | boolean> = {}): Promise<WebAddResult> {
 
@@ -249,7 +248,7 @@ export class Web extends QueryableSecurable {
      * @param language The LCID of the site templates to get.
      * @param true to include language-neutral site templates; otherwise false
      */
-    public availableWebTemplates(language = Locale.EnglishUnitedStates, includeCrossLanugage = true): QueryableCollection {
+    public availableWebTemplates(language = 1033, includeCrossLanugage = true): QueryableCollection {
         return new QueryableCollection(this, `getavailablewebtemplates(lcid=${language}, doincludecrosslanguage=${includeCrossLanugage})`);
     }
 

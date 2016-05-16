@@ -35,7 +35,7 @@ export class Fields extends QueryableCollection {
      * @param title The Id of the list
      */
     public getById(id: string): Field {
-        let f = new Field(this);
+        let f: Field = new Field(this);
         f.concat(`('${id}')`);
         return f;
     }
@@ -52,17 +52,17 @@ export class Fields extends QueryableCollection {
             info = xml as Types.XmlSchemaFieldCreationInformation;
         }
 
-        let postBody = JSON.stringify({
+        let postBody: string = JSON.stringify({
             "parameters":
-            Util.extend({
-                "__metadata":
-                {
-                    "type": "SP.XmlSchemaFieldCreationInformation",
-                },
-            }, info),
+                Util.extend({
+                    "__metadata":
+                    {
+                        "type": "SP.XmlSchemaFieldCreationInformation",
+                    },
+                }, info),
         });
 
-        let q = new Fields(this, "createfieldasxml");
+        let q: Fields = new Fields(this, "createfieldasxml");
 
         return q.post({ body: postBody }).then((data) => {
             return {
@@ -81,7 +81,7 @@ export class Fields extends QueryableCollection {
      */
     public add(title: string, fieldType: string, properties: TypedHash<string | number | boolean> = {}): Promise<FieldAddResult> {
 
-        let postBody = JSON.stringify(Util.extend({
+        let postBody: string = JSON.stringify(Util.extend({
             "__metadata": { "type": fieldType },
             "Title": title,
         }, properties));
@@ -103,7 +103,7 @@ export class Fields extends QueryableCollection {
      */
     public addText(title: string, maxLength = 255, properties?: TypedHash<string | number | boolean>): Promise<FieldAddResult> {
 
-        let props = {
+        let props: { FieldTypeKind: number } = {
             FieldTypeKind: 2,
         };
 
@@ -126,7 +126,12 @@ export class Fields extends QueryableCollection {
         outputType: Types.FieldTypes = Types.FieldTypes.Text,
         properties?: TypedHash<string | number | boolean>): Promise<FieldAddResult> {
 
-        let props = {
+        let props: {
+            DateFormat: Types.DateTimeFieldFormatType;
+            FieldTypeKind: number;
+            Formula: string;
+            OutputType: Types.FieldTypes;
+        } = {
             DateFormat: dateFormat,
             FieldTypeKind: 17,
             Formula: formula,
@@ -151,7 +156,12 @@ export class Fields extends QueryableCollection {
         friendlyDisplayFormat = 0,
         properties?: TypedHash<string | number | boolean>): Promise<FieldAddResult> {
 
-        let props = {
+        let props: {
+            DateTimeCalendarType: Types.CalendarType;
+            DisplayFormat: Types.DateTimeFieldFormatType;
+            FieldTypeKind: number;
+            FriendlyDisplayFormat: number;
+        } = {
             DateTimeCalendarType: calendarType,
             DisplayFormat: displayFormat,
             FieldTypeKind: 4,
@@ -175,7 +185,7 @@ export class Fields extends QueryableCollection {
         maxValue?: number,
         properties?: TypedHash<string | number | boolean>): Promise<FieldAddResult> {
 
-        let props = { FieldTypeKind: 9 };
+        let props: { FieldTypeKind: number } = { FieldTypeKind: 9 };
 
         if (typeof minValue !== "undefined") {
             props = Util.extend({ MinimumValue: minValue }, props);
@@ -204,7 +214,7 @@ export class Fields extends QueryableCollection {
         currencyLocalId = 1033,
         properties?: TypedHash<string | number | boolean>): Promise<FieldAddResult> {
 
-        let props = {
+        let props: { CurrencyLocaleId: number; FieldTypeKind: number; } = {
             CurrencyLocaleId: currencyLocalId,
             FieldTypeKind: 10,
         };
@@ -241,7 +251,14 @@ export class Fields extends QueryableCollection {
         allowHyperlink = true,
         properties?: TypedHash<string | number | boolean>): Promise<FieldAddResult> {
 
-        let props = {
+        let props: {
+            AllowHyperlink: boolean;
+            AppendOnly: boolean;
+            FieldTypeKind: number;
+            NumberOfLines: number;
+            RestrictedMode: boolean;
+            RichText: boolean;
+        } = {
             AllowHyperlink: allowHyperlink,
             AppendOnly: appendOnly,
             FieldTypeKind: 3,
@@ -264,7 +281,7 @@ export class Fields extends QueryableCollection {
         properties?: TypedHash<string | number | boolean>
     ): Promise<FieldAddResult> {
 
-        let props = {
+        let props: { DisplayFormat: Types.UrlFieldFormatType; FieldTypeKind: number } = {
             DisplayFormat: displayFormat,
             FieldTypeKind: 11,
         };
@@ -272,7 +289,6 @@ export class Fields extends QueryableCollection {
         return this.add(title, "SP.FieldUrl", Util.extend(props, properties));
     }
 }
-
 
 /**
  * Describes a single of Field instance
@@ -290,6 +306,203 @@ export class Field extends QueryableInstance {
     }
 
     /**
+      * Gets a value that specifies whether the field can be deleted.
+      */
+    public get canBeDeleted(): Queryable {
+        return new Queryable(this, "canBeDeleted");
+    }
+
+    /**
+     * Gets a value that specifies the default value for the field.
+     */
+    public get defaultValue(): Queryable {
+        return new Queryable(this, "defaultValue");
+    }
+
+    /**
+     * Gets a value that specifies the description of the field.
+     */
+    public get description(): Queryable {
+        return new Queryable(this, "description");
+    }
+
+    /**
+     * Gets a value that specifies the reading order of the field.
+     */
+    public get direction(): Queryable {
+        return new Queryable(this, "direction");
+    }
+
+    /**
+     * Gets a value that specifies whether to require unique field values in a list or library column.
+     */
+    public get enforceUniqueValues(): Queryable {
+        return new Queryable(this, "enforceUniqueValues");
+    }
+
+    /**
+     * Gets the name of the entity property for the list item entity that uses this field.
+     */
+    public get entityPropertyName(): Queryable {
+        return new Queryable(this, "entityPropertyName");
+    }
+
+    /**
+     * Gets a value that specifies whether list items in the list can be filtered by the field value.
+     */
+    public get filterable(): Queryable {
+        return new Queryable(this, "filterable");
+    }
+
+    /**
+     * Gets a Boolean value that indicates whether the field derives from a base field type.
+     */
+    public get fromBaseType(): Queryable {
+        return new Queryable(this, "fromBaseType");
+    }
+
+    /**
+     * Gets a value that specifies the field group.
+     */
+    public get group(): Queryable {
+        return new Queryable(this, "group");
+    }
+
+    /**
+     * Gets a value that specifies whether the field is hidden in list views and list forms.
+     */
+    public get hidden(): Queryable {
+        return new Queryable(this, "hidden");
+    }
+
+    /**
+     * Gets a value that specifies the field identifier.
+     */
+    public get id(): Queryable {
+        return new Queryable(this, "id");
+    }
+
+    /**
+     * Gets a Boolean value that specifies whether the field is indexed.
+     */
+    public get indexed(): Queryable {
+        return new Queryable(this, "indexed");
+    }
+
+    /**
+     * Gets a value that specifies the field internal name.
+     */
+    public get internalName(): Queryable {
+        return new Queryable(this, "internalName");
+    }
+
+    /**
+     * Gets the name of an external JS file containing any client rendering logic for fields of this type.
+     */
+    public get jsLink(): Queryable {
+        return new Queryable(this, "jsLink");
+    }
+
+    /**
+     * Gets a value that specifies whether the value of the field is read-only.
+     */
+    public get readOnlyField(): Queryable {
+        return new Queryable(this, "readOnlyField");
+    }
+
+    /**
+     * Gets a value that specifies whether the field requires a value.
+     */
+    public get required(): Queryable {
+        return new Queryable(this, "required");
+    }
+
+    /**
+     * Gets a value that specifies the XML schema that defines the field.
+     */
+    public get schemaXml(): Queryable {
+        return new Queryable(this, "schemaXml");
+    }
+
+    /**
+     * Gets a value that specifies the server-relative URL of the list or the site to which the field belongs.
+     */
+    public get scope(): Queryable {
+        return new Queryable(this, "scope");
+    }
+
+    /**
+     * Gets a value that specifies whether properties on the field cannot be changed and whether the field cannot be deleted.
+     */
+    public get sealed(): Queryable {
+        return new Queryable(this, "sealed");
+    }
+
+    /**
+     * Gets a value that specifies whether list items in the list can be sorted by the field value.
+     */
+    public get sortable(): Queryable {
+        return new Queryable(this, "sortable");
+    }
+
+    /**
+     * Gets a value that specifies a customizable identifier of the field.
+     */
+    public get staticName(): Queryable {
+        return new Queryable(this, "staticName");
+    }
+
+    /**
+     * Gets value that specifies the display name of the field.
+     */
+    public get title(): Queryable {
+        return new Queryable(this, "title");
+    }
+
+    /**
+     * Gets a value that specifies the type of the field. Represents a FieldType value.
+     * See FieldType in the .NET client object model reference for a list of field type values.
+     */
+    public get fieldTypeKind(): Queryable {
+        return new Queryable(this, "fieldTypeKind");
+    }
+
+    /**
+     * Gets a value that specifies the type of the field.
+     */
+    public get typeAsString(): Queryable {
+        return new Queryable(this, "typeAsString");
+    }
+
+    /**
+     * Gets a value that specifies the display name for the type of the field.
+     */
+    public get typeDisplayName(): Queryable {
+        return new Queryable(this, "typeDisplayName");
+    }
+
+    /**
+     * Gets a value that specifies the description for the type of the field.
+     */
+    public get typeShortDescription(): Queryable {
+        return new Queryable(this, "typeShortDescription");
+    }
+
+    /**
+     * Gets a value that specifies the data validation criteria for the value of the field.
+     */
+    public get validationFormula(): Queryable {
+        return new Queryable(this, "validationFormula");
+    }
+
+    /**
+     * Gets a value that specifies the error message returned when data validation fails for the field.
+     */
+    public get validationMessage(): Queryable {
+        return new Queryable(this, "validationMessage");
+    }
+
+    /**
      * Updates this field intance with the supplied properties
      *
      * @param properties A plain object hash of values to update for the list
@@ -297,7 +510,7 @@ export class Field extends QueryableInstance {
      */
     public update(properties: TypedHash<string | number | boolean>, fieldType = "SP.Field"): Promise<FieldUpdateResult> {
 
-        let postBody = JSON.stringify(Util.extend({
+        let postBody: string = JSON.stringify(Util.extend({
             "__metadata": { "type": fieldType },
         }, properties));
 
@@ -330,7 +543,7 @@ export class Field extends QueryableInstance {
      * Sets the value of the ShowInDisplayForm property for this field.
      */
     public setShowInDisplayForm(show: boolean): Promise<void> {
-        let q = new Field(this, `setshowindisplayform(${show})`);
+        let q: Field = new Field(this, `setshowindisplayform(${show})`);
         return q.post();
     }
 
@@ -338,7 +551,7 @@ export class Field extends QueryableInstance {
      * Sets the value of the ShowInEditForm property for this field.
      */
     public setShowInEditForm(show: boolean): Promise<void> {
-        let q = new Field(this, `setshowineditform(${show})`);
+        let q: Field = new Field(this, `setshowineditform(${show})`);
         return q.post();
     }
 
@@ -346,7 +559,7 @@ export class Field extends QueryableInstance {
      * Sets the value of the ShowInNewForm property for this field.
      */
     public setShowInNewForm(show: boolean): Promise<void> {
-        let q = new Field(this, `setshowinnewform(${show})`);
+        let q: Field = new Field(this, `setshowinnewform(${show})`);
         return q.post();
     }
 }
