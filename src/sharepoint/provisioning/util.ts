@@ -1,13 +1,6 @@
 "use strict";
 export class Util {
     /**
-     * Retrieves the list ID of the current page from _spPageContextInfo
-     */
-    public static getListId(): string {
-        return _spPageContextInfo.hasOwnProperty("pageListId") ? _spPageContextInfo.pageListId.substring(1, 37) : "";
-    }
-
-    /**
      * Make URL relative to host
      *
      * @param url The URL to make relative
@@ -21,7 +14,8 @@ export class Util {
      */
     public static replaceUrlTokens(url: string) {
         return url.replace(/{site}/g, _spPageContextInfo.webAbsoluteUrl)
-            .replace(/{sitecollection}/g, _spPageContextInfo.siteAbsoluteUrl);
+                  .replace(/{sitecollection}/g, _spPageContextInfo.siteAbsoluteUrl)
+                  .replace(/{themegallery}/g, `${_spPageContextInfo.siteAbsoluteUrl}/_catalogs/theme/15`);
     };
 
     public static encodePropertyKey(propKey) {

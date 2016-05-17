@@ -9,18 +9,23 @@ import { ObjectComposedLook } from "./ObjectHandlers/ObjectComposedLook";
 import { ObjectCustomActions } from "./ObjectHandlers/ObjectCustomActions";
 import { ObjectFiles } from "./ObjectHandlers/ObjectFiles";
 import { ObjectLists } from "./ObjectHandlers/ObjectLists";
-import { Util } from "../../sharepoint/util";
+import { Util } from "./util";
 import { Logger } from "../../utils/logging";
 import { SiteSchema } from "./schema/isiteschema";
 import { HttpClient } from "../../net/HttpClient";
 
+/**
+ * Root class of Provisioning 
+ */
 export class Provisioning {
-
     private handlers;
     private httpClient: HttpClient;
     private startTime;
     private queueItems: Array<ProvisioningStep>;
 
+    /**
+     * Creates a new instance of the Provisioning class
+     */
     constructor() {
         this.handlers = {
             "Navigation": ObjectNavigation,
@@ -35,7 +40,12 @@ export class Provisioning {
         this.httpClient = new HttpClient();
     }
 
-    public applyTemplate(path: string) {
+    /**
+     * Applies a JSON template to the current web
+     * 
+     * @param path URL to the template file
+     */
+    public applyTemplate(path: string): Promise<any> {
         const url = Util.replaceUrlTokens(path);
 
         return new Promise((resolve, reject) => {
@@ -53,6 +63,12 @@ export class Provisioning {
         });
     }
 
+    /**
+     * Starts the provisioning
+     * 
+     * @param json The parsed template in JSON format
+     * @param queue Array of Object Handlers to run
+     */
     private start(json: SiteSchema, queue: Array<string>) {
         return new Promise((resolve, reject) => {
             this.startTime = new Date().getTime();
@@ -66,8 +82,9 @@ export class Provisioning {
             });
 
             let promises = [];
-            promises.push(new Promise(() => {
+            promises.push(new Promise((res) => {
                 Logger.write("Provisioning: Code execution scope started", Logger.LogLevel.Info);
+                res();
             }));
             let index = 1;
             while (this.queueItems[index - 1] !== undefined) {

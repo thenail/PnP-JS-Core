@@ -213,13 +213,76 @@ export class Queryable {
  */
 export class QueryableCollection extends Queryable {
 
+    /**
+     * Filters the returned collection (https://msdn.microsoft.com/en-us/library/office/fp142385.aspx#bk_supported)
+     * 
+     * @param filter The string representing the filter query
+     */
     public filter(filter: string): QueryableCollection {
         this._query.add("$filter", filter);
         return this;
     }
 
+    /**
+     * Choose which fields to return
+     * 
+     * @param selects One or more fields to return
+     */
     public select(...selects: string[]): QueryableCollection {
         this._query.add("$select", selects.join(","));
+        return this;
+    }
+
+    /**
+     * Expands fields such as lookups to get additional data
+     * 
+     * @param expands The Fields for which to expand the values
+     */
+    public expand(...expands: string[]): QueryableCollection {
+        this._query.add("$expand", expands.join(","));
+        return this;
+    }
+
+    /**
+     * Orders based on the supplied fields ascending
+     * 
+     * @param orderby The name of the field to sort on
+     * @param ascending If true ASC is appended, otherwise DESC (default)
+     */
+    public orderBy(orderBy: string, ascending = false): QueryableCollection {
+        let keys = this._query.getKeys();
+        let query = [];
+        let asc = ascending ? " asc" : "";
+        for (let i = 0; i < keys.length; i++) {
+            if (keys[i] === "$orderby") {
+                query.push(this._query.get("$orderby"));
+                break;
+            }
+        }
+        query.push(`${orderBy}${asc}`);
+
+        this._query.add("$orderby", query.join(","));
+
+        return this;
+    }
+
+    /**
+     * Skips the specified number of items (does not work with list items)
+     * 
+     * @param skip The number of items to skip
+     */
+    public skip(skip: number): QueryableCollection {
+        this._query.add("$skip", skip.toString());
+        return this;
+    }
+
+    /**
+     * Limits the query to only return the specified number of items
+     * 
+     * @param top The query row limit
+     */
+    public top(top: number): QueryableCollection {
+        this._query.add("$top", top.toString());
         return this;
     }
 }
@@ -231,8 +294,23 @@ export class QueryableCollection extends Queryable {
  */
 export class QueryableInstance extends Queryable {
 
+    /**
+     * Choose which fields to return
+     * 
+     * @param selects One or more fields to return
+     */
     public select(...selects: string[]): QueryableInstance {
         this._query.add("$select", selects.join(","));
+        return this;
+    }
+
+    /**
+     * Expands fields such as lookups to get additional data
+     * 
+     * @param expands The Fields for which to expand the values
+     */
+    public expand(...expands: string[]): QueryableInstance {
+        this._query.add("$expand", expands.join(","));
         return this;
     }
 }

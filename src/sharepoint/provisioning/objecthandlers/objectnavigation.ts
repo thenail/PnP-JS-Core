@@ -1,16 +1,27 @@
 "use strict";
 
-import { Util } from "../../util";
+import { Util } from "../util";
 import { ObjectHandlerBase } from "./ObjectHandlerBase";
 import { INavigation } from "../schema/inavigation";
 import { INavigationNode } from "../schema/inavigationnode";
 import { HttpClient } from "../../../net/HttpClient";
 
+/**
+ * Describes the Navigation Object Handler
+ */
 export class ObjectNavigation extends ObjectHandlerBase {
+    /**
+     * Creates a new instance of the ObjectNavigation class
+     */
     constructor() {
         super("Navigation");
     }
 
+    /**
+     * Provision Navigation nodes
+     * 
+     * @param object The navigation settings and nodes to provision
+     */
     public ProvisionObjects(object: INavigation) {
         super.scope_started();
         let clientContext = SP.ClientContext.get_current();
@@ -70,24 +81,28 @@ export class ObjectNavigation extends ObjectHandlerBase {
                                 quickLaunchNodeCollection.add(newNode);
                             });
                             clientContext.executeQueryAsync(() => {
-                                httpClient.get(`${_spPageContextInfo.webAbsoluteUrl}/_api/web/Navigation/QuickLaunch`).then((data: any) => {
-                                    data = data.d.results;
-                                    data.forEach((d: any) => {
-                                        let node = navigation.getNodeById(d.Id);
-                                        let childrenNodeCollection = node.get_children();
-                                        let parentNode = nodes.filter((value: any) => { return value.Title === d.Title; })[0];
-                                        if (parentNode && parentNode.Children) {
-                                            parentNode.Children.forEach((n: INavigationNode) => {
-                                                const existingNode = this.getNodeFromCollectionByTitle(temporaryQuickLaunch, n.Title);
-                                                const newNode = new SP.NavigationNodeCreationInformation();
-                                                newNode.set_title(n.Title);
-                                                newNode.set_url(existingNode ? existingNode.get_url() : Util.replaceUrlTokens(n.Url));
-                                                newNode.set_asLastNode(true);
-                                                childrenNodeCollection.add(newNode);
-                                            });
-                                        }
+                                httpClient.get(`${_spPageContextInfo.webAbsoluteUrl}/_api/web/Navigation/QuickLaunch`).then((response) => {
+                                    response.json().then(json => {
+                                        json.value.forEach((d: any) => {
+                                            let node = navigation.getNodeById(d.Id);
+                                            let childrenNodeCollection = node.get_children();
+                                            let parentNode = nodes.filter((value: INavigationNode) => value.Title === d.Title)[0];
+                                            if (parentNode && parentNode.Children) {
+                                                parentNode.Children.forEach((n: INavigationNode) => {
+                                                    const existingNode = this.getNodeFromCollectionByTitle
+                                                    (temporaryQuickLaunch, n.Title);
+                                                    const newNode = new SP.NavigationNodeCreationInformation();
+                                                    newNode.set_title(n.Title);
+                                                    newNode.set_url(existingNode
+                                                    ? existingNode.get_url()
+                                                    : Util.replaceUrlTokens(n.Url));
+                                                    newNode.set_asLastNode(true);
+                                                    childrenNodeCollection.add(newNode);
+                                                });
+                                            }
+                                        });
+                                        clientContext.executeQueryAsync(resolve, resolve);
                                     });
-                                    clientContext.executeQueryAsync(resolve, resolve);
                                 });
                             }, resolve);
                         });
