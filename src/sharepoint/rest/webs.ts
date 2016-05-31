@@ -1,17 +1,20 @@
 "use strict";
 
-import { Queryable, QueryableInstance, QueryableCollection } from "./Queryable";
+import { Queryable, QueryableCollection } from "./Queryable";
 import { QueryableSecurable } from "./QueryableSecurable";
 import { Lists } from "./lists";
 import { Navigation } from "./navigation";
-import { SiteUsers } from "./siteUsers";
+import { SiteGroups } from "./sitegroups";
 import { ContentTypes } from "./contentTypes";
 import { Folders, Folder } from "./folders";
+import { RoleDefinitions } from "./roles";
 import { File } from "./files";
 import { TypedHash } from "../../collections/collections";
 import { Util } from "../../utils/util";
 import * as Types from "./types";
 import { List } from "./lists";
+import { SiteUsers, SiteUser } from "./siteusers";
+import { UserCustomActions } from "./usercustomactions";
 
 
 export class Webs extends QueryableCollection {
@@ -120,11 +123,35 @@ export class Web extends QueryableSecurable {
     }
 
     /**
+     * Gets the site groups
+     *
+     */
+    public get siteGroups(): SiteGroups {
+        return new SiteGroups(this);
+    }
+
+    /**
      * Get the folders in this web
      *
      */
     public get folders(): Folders {
         return new Folders(this);
+    }
+
+    /**
+     * Get all custom actions on a site
+     * 
+     */
+    public get userCustomActions(): UserCustomActions {
+        return new UserCustomActions(this);
+    }
+
+    /**
+     * Gets the collection of RoleDefinition resources.
+     * 
+     */
+    public get roleDefinitions(): RoleDefinitions {
+        return new RoleDefinitions(this);
     }
 
     /**
@@ -292,9 +319,8 @@ export class Web extends QueryableSecurable {
      *
      * @param id The ID of the user.
      */
-    public getUserById(id: number): QueryableInstance {
-        // TODO:: should return a User
-        return new QueryableInstance(this, `getUserById(${id})`);
+    public getUserById(id: number): SiteUser {
+        return new SiteUser(this, `getUserById(${id})`);
     }
 
     /**

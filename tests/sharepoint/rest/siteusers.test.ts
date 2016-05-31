@@ -1,17 +1,69 @@
 "use strict";
 
 import { expect } from "chai";
-import { SiteUsers } from "../../../src/sharepoint/rest/siteUsers";
+import { SiteUser, SiteUsers } from "../../../src/sharepoint/rest/siteUsers";
 
 describe("SiteUsers", () => {
-    it("Should be an object", () => {
-        let siteUsers = new SiteUsers("_api/web");
-        expect(siteUsers).to.be.a("object");
+
+    let users: SiteUsers;
+
+    beforeEach(() => {
+        users = new SiteUsers("_api/web");
     });
+
+    it("Should be an object", () => {
+        expect(users).to.be.a("object");
+    });
+
     describe("url", () => {
         it("Should return _api/web/siteusers", () => {
-            let siteUsers = new SiteUsers("_api/web");
-            expect(siteUsers.toUrl()).to.equal("_api/web/siteusers");
+            expect(users.toUrl()).to.equal("_api/web/siteusers");
+        });
+    });
+
+    describe("getByEmail", () => {
+        it("Should return _api/web/siteusers/getByEmail('user@user.com')", () => {
+            let user = users.getByEmail("user@user.com");
+            expect(user.toUrl()).to.equal("_api/web/siteusers/getByEmail('user@user.com')");
+        });
+    });
+
+    describe("getById", () => {
+        it("Should return _api/web/siteusers/getById(12)", () => {
+            let user = users.getById(12);
+            expect(user.toUrl()).to.equal("_api/web/siteusers/getById(12)");
+        });
+    });
+
+    describe("getByLoginName", () => {
+        it("Should return _api/web/siteusers(@v)?@v=i%3A0%23.f%7Cmembership%7Cuser%40tenant.com", () => {
+            let user = users.getByLoginName("i:0#.f|membership|user@tenant.com");
+            expect(user.toUrlAndQuery()).to.equal("_api/web/siteusers(@v)?@v=i%3A0%23.f%7Cmembership%7Cuser%40tenant.com");
+        });
+    });
+});
+
+describe("SiteUser", () => {
+
+    let user: SiteUser;
+
+    beforeEach(() => {
+        user = new SiteUsers("_api/web").getById(2);
+    });
+
+    it("Should be an object", () => {
+        expect(user).to.be.a("object");
+    });
+
+    describe("url", () => {
+        it("Should return _api/web/siteusers/getById(2)", () => {
+            expect(user.toUrl()).to.equal("_api/web/siteusers/getById(2)");
+        });
+    });
+
+    describe("groups", () => {
+        it("Should return _api/web/siteusers/getById(2)/groups", () => {
+            expect(user.groups.toUrl()).to.equal("_api/web/siteusers/getById(2)/groups");
         });
     });
 });

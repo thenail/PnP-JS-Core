@@ -18,8 +18,8 @@ var gulp = require("gulp");
 //* BUILD-SERVE-DIST
 //******************************************************************************
 
-gulp.task("build-serve-dist", ["package"], function() {
-    var distFiles = global.TSDist.RootFolder + "/*.{js,map}"
+gulp.task("build-serve-dist", ["package-notest"], function() {
+    var distFiles = global.TSDist.RootFolder + "/*.{js,map,d.ts}"
 
     return gulp.src(distFiles)
         .pipe(gulp.dest(global.PnPLocalServer.RootFolder + "/" +  global.PnPLocalServer.ScriptsRootFolder));

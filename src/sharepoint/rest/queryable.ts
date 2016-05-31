@@ -4,6 +4,8 @@ import { Util } from "../../utils/util";
 import { Dictionary } from "../../collections/collections";
 import { HttpClient } from "../../net/HttpClient";
 
+declare var _spPageContextInfo: any;
+
 /**
  * Queryable Base Class
  *
@@ -42,7 +44,10 @@ export class Queryable {
         } else {
             let q = baseUrl as Queryable;
             this._parentUrl = q._url;
-            this._query.merge(q._query);
+            let target = q._query.get("@target");
+            if (target !== null) {
+                this._query.add("@target", target);
+            }
             this._url = Util.combinePaths(this._parentUrl, path);
         }
     }
@@ -178,14 +183,16 @@ export class Queryable {
      *
      * @param factory The contructor for the class to create
      */
-    protected getParent<T extends Queryable>(factory: { new (q: string | Queryable): T }, baseUrl: string | Queryable = this.parentUrl): T {
-        let parent = new factory(baseUrl);
+    /* tslint:disable line-length */
+    protected getParent<T extends Queryable>(factory: { new (q: string | Queryable, path?: string): T }, baseUrl: string | Queryable = this.parentUrl, path?:string): T {
+        let parent = new factory(baseUrl, path);
         let target = this.query.get("@target");
         if (target !== null) {
             parent.query.add("@target", target);
         }
         return parent;
     }
+    /* tslint:enable */
 
     /**
      * Default parser used to simply the parsing of standard SharePoint results

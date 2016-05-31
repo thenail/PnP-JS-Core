@@ -31,6 +31,7 @@
     "run-sequence": "^1.1.5",
     "tslint": "^3.4.0",
     "typescript": "^1.7.5",
+    "typings": "^1.0.4",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0"
   },

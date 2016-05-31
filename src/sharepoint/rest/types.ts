@@ -464,3 +464,17 @@ export interface HashTag {
 export interface HashTagCollection {
     Items: HashTag[];
 }
+
+export interface UserIdInfo {
+    NameId?: string;
+    NameIdIssuer?: string;
+}
+
+export enum PrincipalType {
+    None = 0,
+    User = 1,
+    DistributionList = 2,
+    SecurityGroup = 4,
+    SharePointGroup = 8,
+    All = 15
+}

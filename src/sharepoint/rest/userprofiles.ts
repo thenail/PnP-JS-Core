@@ -239,8 +239,7 @@ class ProfileLoader extends Queryable {
      * 
      */
     public get ownerUserProfile(): Promise<Types.UserProfile> {
-        let q = this.getParent(ProfileLoader);
-        q.append("sp.userprofiles.profileloader.getowneruserprofile");
+        let q = this.getParent(ProfileLoader, this.parentUrl, "sp.userprofiles.profileloader.getowneruserprofile");
         return q.post();
     }
 

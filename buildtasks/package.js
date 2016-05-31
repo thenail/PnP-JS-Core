@@ -163,3 +163,19 @@ gulp.task("package", ["build", "test"], function () {
         packageProvisioningBundleUglify(),
     ]);
 });
+
+gulp.task("package-notest", ["build"], function () {
+
+    return merge([
+        // build and package the definition files
+        packageDefinitions(),
+        // build and package the lib folder
+        packageLib(),
+        // bundle the core
+        packageBundle(),
+        packageBundleUglify(),
+        // bundle provisioning
+        packageProvisioningBundle(),
+        packageProvisioningBundleUglify(),
+    ]);
+});

@@ -3,6 +3,7 @@
 import { Queryable, QueryableInstance } from "./Queryable";
 import { Web } from "./webs";
 import { Util } from "../../utils/util";
+import { UserCustomActions } from "./usercustomactions";
 
 /**
  * Describes a site collection
@@ -32,6 +33,14 @@ export class Site extends QueryableInstance {
      */
     public get rootWeb(): Web {
         return new Web(this, "rootweb");
+    }
+
+    /**
+     * Get all custom actions on a site collection
+     * 
+     */
+    public get userCustomActions(): UserCustomActions {
+        return new UserCustomActions(this);
     }
 
     /**

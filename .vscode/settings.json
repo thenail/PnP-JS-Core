@@ -6,7 +6,6 @@
         "lib/": true,
         "build/": true,
         "node_modules/": true,
-        "server-root/require.js": true,
         "coverage": true
     }
 }
