@@ -54,17 +54,17 @@ export class Fields extends QueryableCollection {
 
         let postBody: string = JSON.stringify({
             "parameters":
-                Util.extend({
-                    "__metadata":
-                    {
-                        "type": "SP.XmlSchemaFieldCreationInformation",
-                    },
-                }, info),
+            Util.extend({
+                "__metadata":
+                {
+                    "type": "SP.XmlSchemaFieldCreationInformation",
+                },
+            }, info),
         });
 
         let q: Fields = new Fields(this, "createfieldasxml");
 
-        return q.post({ body: postBody }).then((data) => {
+        return q.postAs<any, { Id: string }>({ body: postBody }).then((data) => {
             return {
                 data: data,
                 field: this.getById(data.Id),
@@ -86,7 +86,7 @@ export class Fields extends QueryableCollection {
             "Title": title,
         }, properties));
 
-        return this.post({ body: postBody }).then((data) => {
+        return this.postAs<any, { Id: string }>({ body: postBody }).then((data) => {
             return {
                 data: data,
                 field: this.getById(data.Id),
@@ -132,11 +132,11 @@ export class Fields extends QueryableCollection {
             Formula: string;
             OutputType: Types.FieldTypes;
         } = {
-            DateFormat: dateFormat,
-            FieldTypeKind: 17,
-            Formula: formula,
-            OutputType: outputType,
-        };
+                DateFormat: dateFormat,
+                FieldTypeKind: 17,
+                Formula: formula,
+                OutputType: outputType,
+            };
 
         return this.add(title, "SP.FieldCalculated", Util.extend(props, properties));
     }
@@ -162,11 +162,11 @@ export class Fields extends QueryableCollection {
             FieldTypeKind: number;
             FriendlyDisplayFormat: number;
         } = {
-            DateTimeCalendarType: calendarType,
-            DisplayFormat: displayFormat,
-            FieldTypeKind: 4,
-            FriendlyDisplayFormat: friendlyDisplayFormat,
-        };
+                DateTimeCalendarType: calendarType,
+                DisplayFormat: displayFormat,
+                FieldTypeKind: 4,
+                FriendlyDisplayFormat: friendlyDisplayFormat,
+            };
 
         return this.add(title, "SP.FieldDateTime", Util.extend(props, properties));
     }
@@ -259,13 +259,13 @@ export class Fields extends QueryableCollection {
             RestrictedMode: boolean;
             RichText: boolean;
         } = {
-            AllowHyperlink: allowHyperlink,
-            AppendOnly: appendOnly,
-            FieldTypeKind: 3,
-            NumberOfLines: numberOfLines,
-            RestrictedMode: restrictedMode,
-            RichText: richText,
-        };
+                AllowHyperlink: allowHyperlink,
+                AppendOnly: appendOnly,
+                FieldTypeKind: 3,
+                NumberOfLines: numberOfLines,
+                RestrictedMode: restrictedMode,
+                RichText: richText,
+            };
 
         return this.add(title, "SP.FieldMultiLineText", Util.extend(props, properties));
     }

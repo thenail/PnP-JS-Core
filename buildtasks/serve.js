@@ -21,7 +21,7 @@ function setBrowserSync(buildServeTaskName) {
         https: true
     });
 
-    gulp.watch(global.TSWorkspace.Files, ["lint", buildServeTaskName]);
+    gulp.watch(global.TSWorkspace.Files, [buildServeTaskName]);
     gulp.watch(global.PnPLocalServer.RootFolder).on('change', browserSync.reload);
     gulp.watch(global.PnPLocalServer.RootFolder + "/" +  global.PnPLocalServer.ScriptsRootFolder + "/**/*.js").on('change', browserSync.reload);
 }

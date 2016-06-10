@@ -21,6 +21,9 @@ var gulp = require("gulp"),
 gulp.task('clean', function() {
     var directories = [];
     directories.push(global.TSCompiledOutput.RootFolder);
+    directories.push(global.TSCompiledOutput.TestRootFolder);
+    directories.push(global.TSDist.RootFolder);
+    directories.push(global.TSDist.SrcFolder);
     directories.push(global.PnPLocalServer.RootFolder + "/" + global.PnPLocalServer.ScriptsRootFolder);
 
     return gulp.src(directories, { read: false })

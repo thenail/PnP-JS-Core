@@ -55,7 +55,7 @@ export class Views extends QueryableCollection {
             "PersonalView": personalView
         }, additionalSettings));
 
-        return this.post({ body: postBody }).then((data) => {
+        return this.postAs<any, { Id: string }>({ body: postBody }).then((data) => {
             return {
                 view: this.getById(data.Id),
                 data: data

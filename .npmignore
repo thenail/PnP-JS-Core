@@ -1,4 +1,5 @@
 .npmignore
+.github
 bower.json
 gulpfile.js
 jsconfig.json

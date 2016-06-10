@@ -9,6 +9,7 @@ import { QueryableSecurable } from "./QueryableSecurable";
 import { Util } from "../../utils/util";
 import { TypedHash } from "../../collections/collections";
 import * as Types from "./types";
+import { UserCustomActions } from "./usercustomactions";
 
 /**
  * Describes a collection of List objects
@@ -41,7 +42,7 @@ export class Lists extends QueryableCollection {
      */
     public getById(id: string): List {
         let list = new List(this);
-        list.concat(`(guid'${id}')`);
+        list.concat(`('${id}')`);
         return list;
     }
 
@@ -185,6 +186,14 @@ export class List extends QueryableSecurable {
     }
 
     /**
+     * Get all custom actions on a site collection
+     * 
+     */
+    public get userCustomActions(): UserCustomActions {
+        return new UserCustomActions(this);
+    }
+
+    /**
      * Gets the effective base permissions of this list
      *
      */
@@ -214,14 +223,6 @@ export class List extends QueryableSecurable {
      */
     public get informationRightsManagementSettings(): Queryable {
         return new Queryable(this, "InformationRightsManagementSettings");
-    }
-
-    /**
-     * Gets the user custom actions attached to this list
-     *
-     */
-    public get userCustomActions(): Queryable {
-        return new Queryable(this, "UserCustomActions");
     }
 
     /**
@@ -256,8 +257,7 @@ export class List extends QueryableSecurable {
             let retList: List = this;
 
             if (properties.hasOwnProperty("Title")) {
-                retList = this.getParent(List);
-                retList.append(`getByTitle('${properties["Title"]}')`);
+                retList = this.getParent(List, this.parentUrl, `getByTitle('${properties["Title"]}')`);
             }
 
             return {
@@ -297,12 +297,15 @@ export class List extends QueryableSecurable {
     /**
      * Returns a collection of items from the list based on the specified query.
      */
-    public getItemsByCAMLQuery(query: Types.CamlQuery): Promise<any> {
+    public getItemsByCAMLQuery(query: Types.CamlQuery, ...expands: string[]): Promise<any> {
 
         let postBody = JSON.stringify({ "query": Util.extend({ "__metadata": { "type": "SP.CamlQuery" } }, query) });
 
         // don't change "this" instance of the List, make a new one
         let q = new List(this, "getitems");
+
+        q = q.expand.apply(q, expands);
+
         return q.post({ body: postBody });
     }
 
@@ -315,7 +318,7 @@ export class List extends QueryableSecurable {
         // don't change "this" instance of the List, make a new one
         let q = new List(this, "getlistitemchangessincetoken");
         // note we are using a custom parser to return text as the response is an xml doc
-        return q.post({ body: postBody }, (r) => r.text());
+        return q.post({ body: postBody }, { parse(r) { return r.text(); } });
     }
 
     /**

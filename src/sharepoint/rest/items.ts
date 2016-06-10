@@ -7,6 +7,7 @@ import { ContentType } from "./contenttypes";
 import { TypedHash } from "../../collections/collections";
 import { Util } from "../../utils/util";
 import * as Types from "./types";
+import { ODataParserBase } from "./odata";
 
 /**
  * Describes a collection of Item objects
@@ -35,6 +36,24 @@ export class Items extends QueryableCollection {
     }
 
     /**
+     * Skips the specified number of items (https://msdn.microsoft.com/en-us/library/office/fp142385.aspx#sectionSection6)
+     * 
+     * @param skip The starting id where the page should start, use with top to specify pages
+     */
+    public skip(skip: number): QueryableCollection {
+        this._query.add("$skiptoken", encodeURIComponent(`Paged=TRUE&p_ID=${skip}`));
+        return this;
+    }
+
+    /**
+     * Gets a collection designed to aid in paging through data
+     * 
+     */
+    public getPaged(): Promise<PagedItemCollection<any>> {
+        return this.getAs(new PagedItemCollectionParser());
+    }
+
+    /**
      * Adds a new item to the collection
      *
      * @param properties The new items's properties
@@ -43,13 +62,13 @@ export class Items extends QueryableCollection {
 
         let parentList = this.getParent(QueryableInstance);
 
-        return parentList.select("ListItemEntityTypeFullName").get().then((d) => {
+        return parentList.select("ListItemEntityTypeFullName").getAs<any, { ListItemEntityTypeFullName: string }>().then((d) => {
 
             let postBody = JSON.stringify(Util.extend({
                 "__metadata": { "type": d.ListItemEntityTypeFullName },
             }, properties));
 
-            return this.post({ body: postBody }).then((data) => {
+            return this.postAs<any, { Id: number }>({ body: postBody }).then((data) => {
                 return {
                     data: data,
                     item: this.getById(data.Id),
@@ -59,6 +78,11 @@ export class Items extends QueryableCollection {
     }
 }
 
+class PagedItemCollectionParser extends ODataParserBase<any, PagedItemCollection<any>> {
+    public parse(r: Response): Promise<PagedItemCollection<any>> {
+        return PagedItemCollection.fromResponse(r);
+    }
+}
 
 /**
  * Descrines a single Item instance
@@ -149,7 +173,7 @@ export class Item extends QueryableSecurable {
 
         let parentList = this.getParent(QueryableInstance, this.parentUrl.substr(0, this.parentUrl.lastIndexOf("/")));
 
-        return parentList.select("ListItemEntityTypeFullName").get().then((d) => {
+        return parentList.select("ListItemEntityTypeFullName").getAs<any, { ListItemEntityTypeFullName: string }>().then((d) => {
 
             let postBody = JSON.stringify(Util.extend({
                 "__metadata": { "type": d.ListItemEntityTypeFullName },
@@ -215,4 +239,55 @@ export interface ItemAddResult {
 export interface ItemUpdateResult {
     item: Item;
     data: any;
+}
+
+/**
+ * Provides paging functionality for list items
+ */
+export class PagedItemCollection<T> {
+
+    /**
+     * Contains the results of the query
+     */
+    public results: T;
+
+    /**
+     * The url to the next set of results
+     */
+    private nextUrl: string;
+
+    /**
+     * If true there are more results available in the set, otherwise there are not
+     */
+    public get hasNext(): boolean {
+        return typeof this.nextUrl === "string" && this.nextUrl.length > 0;
+    }
+
+    /**
+     * Creats a new instance of the PagedItemCollection class from the response
+     * 
+     * @param r Response instance from which this collection will be created
+     * 
+     */
+    public static fromResponse(r: Response): Promise<PagedItemCollection<any>> {
+        return r.json().then(d => {
+            let col = new PagedItemCollection();
+            col.nextUrl = d["odata.nextLink"];
+            col.results = d.value;
+            return col;
+        });
+    }
+
+    /**
+     * Gets the next set of results, or resolves to null if no results are available
+     */
+    public getNext(): Promise<PagedItemCollection<any>> {
+
+        if (this.hasNext) {
+            let items = new Items(this.nextUrl, null);
+            return items.getPaged();
+        }
+
+        return new Promise<any>(r => r(null));
+    }
 }

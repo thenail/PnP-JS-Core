@@ -2,7 +2,7 @@
 
 import { Queryable, QueryableInstance } from "./Queryable";
 import { Web } from "./webs";
-import { Util } from "../../utils/util";
+import { UserCustomActions } from "./usercustomactions";
 
 /**
  * Describes a site collection
@@ -15,14 +15,7 @@ export class Site extends QueryableInstance {
      * 
      * @param baseUrl The url or Queryable which forms the parent of this fields collection
      */
-    constructor(baseUrl: string, path?: string) {
-
-        let urlStr = baseUrl as string;
-        if (urlStr.indexOf("_api") < 0) {
-            // try and handle the case where someone created a new web/site and didn't append _api
-            baseUrl = Util.combinePaths(urlStr, "_api");
-        }
-
+    constructor(baseUrl: string | Queryable, path = "_api/site") {
         super(baseUrl, path);
     }
 
@@ -35,10 +28,18 @@ export class Site extends QueryableInstance {
     }
 
     /**
+     * Get all custom actions on a site collection
+     * 
+     */
+    public get userCustomActions(): UserCustomActions {
+        return new UserCustomActions(this);
+    }
+
+    /**
      * Gets the context information for the site.
      */
     public getContextInfo(): Promise<any> {
-        let q = new Site("_api/contextinfo");
+        let q = new Site("", "_api/contextinfo");
         return q.post();
     }
 

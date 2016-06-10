@@ -1,5 +1,5 @@
 
-import { RoleAssignments } from "./RoleAssignments";
+import { RoleAssignments } from "./roles";
 import { Queryable, QueryableInstance } from "./Queryable";
 
 export class QueryableSecurable extends QueryableInstance {
