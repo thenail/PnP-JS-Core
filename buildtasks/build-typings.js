@@ -18,7 +18,7 @@ var gulp = require("gulp"),
 //* BUILD-TYPINGS
 //******************************************************************************
 
-gulp.task("build-typings", function() {
+gulp.task("build-typings", ["clean"], function() {
     var src = global.TSWorkspace.Files.slice(0);
     src.push(global.TSTypings.Main);
     src.push("!src/*.test.ts");

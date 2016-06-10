@@ -1,17 +1,20 @@
 "use strict";
 
-import { Queryable, QueryableInstance, QueryableCollection } from "./Queryable";
-import { QueryableSecurable } from "./QueryableSecurable";
+import { Queryable, QueryableCollection } from "./queryable";
+import { QueryableSecurable } from "./queryablesecurable";
 import { Lists } from "./lists";
 import { Navigation } from "./navigation";
-import { SiteUsers } from "./siteUsers";
-import { ContentTypes } from "./contentTypes";
+import { SiteGroups } from "./sitegroups";
+import { ContentTypes } from "./contenttypes";
 import { Folders, Folder } from "./folders";
+import { RoleDefinitions } from "./roles";
 import { File } from "./files";
 import { TypedHash } from "../../collections/collections";
 import { Util } from "../../utils/util";
 import * as Types from "./types";
 import { List } from "./lists";
+import { SiteUsers, SiteUser } from "./siteusers";
+import { UserCustomActions } from "./usercustomactions";
 
 
 export class Webs extends QueryableCollection {
@@ -72,14 +75,7 @@ export class Webs extends QueryableCollection {
  */
 export class Web extends QueryableSecurable {
 
-    constructor(baseUrl: string | Queryable, path?: string) {
-
-        let urlStr = baseUrl as string;
-        if (urlStr.indexOf("_api") < 0) {
-            // try and handle the case where someone created a new web/site and didn't append _api
-            baseUrl = Util.combinePaths(urlStr, "_api");
-        }
-
+    constructor(baseUrl: string | Queryable, path = "_api/web") {
         super(baseUrl, path);
     }
 
@@ -120,11 +116,35 @@ export class Web extends QueryableSecurable {
     }
 
     /**
+     * Gets the site groups
+     *
+     */
+    public get siteGroups(): SiteGroups {
+        return new SiteGroups(this);
+    }
+
+    /**
      * Get the folders in this web
      *
      */
     public get folders(): Folders {
         return new Folders(this);
+    }
+
+    /**
+     * Get all custom actions on a site
+     * 
+     */
+    public get userCustomActions(): UserCustomActions {
+        return new UserCustomActions(this);
+    }
+
+    /**
+     * Gets the collection of RoleDefinition resources.
+     * 
+     */
+    public get roleDefinitions(): RoleDefinitions {
+        return new RoleDefinitions(this);
     }
 
     /**
@@ -292,9 +312,8 @@ export class Web extends QueryableSecurable {
      *
      * @param id The ID of the user.
      */
-    public getUserById(id: number): QueryableInstance {
-        // TODO:: should return a User
-        return new QueryableInstance(this, `getUserById(${id})`);
+    public getUserById(id: number): SiteUser {
+        return new SiteUser(this, `getUserById(${id})`);
     }
 
     /**

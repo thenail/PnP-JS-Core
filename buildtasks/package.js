@@ -68,7 +68,7 @@ function packageLib() {
     var packageProject = tsc.createProject({
         "declaration": true,
         "removeComments": false,
-        "module": "es5",
+        "module": "commonjs",
         "target": "es5",
         "jsx": "react"
     });
@@ -84,16 +84,17 @@ function packageLib() {
 function packageBundle() {
 
     console.log(global.TSDist.RootFolder + "/" + global.TSDist.BundleFileName);
+    console.log(global.TSDist.RootFolder + "/" + global.TSDist.BundleFileName + ".map");
 
     return browserify('./build/src/pnp.js', {
-        debug: false,
+        debug: true,
         standalone: '$pnp',
     }).ignore('*.d.ts').bundle()
         .pipe(src(global.TSDist.BundleFileName))
-        .pipe(replace(/Object\.defineProperty\(exports, "__esModule", \{ value: true \}\);/ig, ""))
-        .pipe(replace(/exports.default = PnP;/ig, "return PnP;"))
         .pipe(buffer())
+        .pipe(srcmaps.init({ loadMaps: true }))
         .pipe(header(banner, { pkg: global.pkg }))
+        .pipe(srcmaps.write('./'))
         .pipe(gulp.dest(global.TSDist.RootFolder));
 }
 
@@ -103,12 +104,10 @@ function packageBundleUglify() {
     console.log(global.TSDist.RootFolder + "/" + global.TSDist.MinifyFileName + ".map");
 
     return browserify('./build/src/pnp.js', {
-        debug: false,
+        debug: true,
         standalone: '$pnp',
     }).ignore('*.d.ts').bundle()
         .pipe(src(global.TSDist.MinifyFileName))
-        .pipe(replace(/Object\.defineProperty\(exports, "__esModule", \{ value: true \}\);/ig, ""))
-        .pipe(replace(/exports.default = PnP;/ig, "return PnP;"))
         .pipe(buffer())
         .pipe(srcmaps.init({ loadMaps: true }))
         .pipe(uglify())
@@ -123,7 +122,7 @@ function packageProvisioningBundle() {
 
     return browserify('./build/src/sharepoint/provisioning/provisioning.js', {
         debug: false,
-        standalone: '$pnpProvisioning',
+        standalone: '$pnp.Provisioning',
     }).ignore('*.d.ts').bundle()
         .pipe(src("pnp-provisioning.js"))
         .pipe(buffer())
@@ -138,7 +137,7 @@ function packageProvisioningBundleUglify() {
 
     return browserify('./build/src/sharepoint/provisioning/provisioning.js', {
         debug: false,
-        standalone: '$pnpProvisioning',
+        standalone: '$pnp.Provisioning',
     }).ignore('*.d.ts').bundle()
         .pipe(src("pnp-provisioning.min.js"))
         .pipe(buffer())
@@ -165,5 +164,19 @@ gulp.task("package", ["build", "test"], function () {
         // bundle provisioning
         packageProvisioningBundle(),
         packageProvisioningBundleUglify(),
+    ]);
+});
+
+gulp.task("package-serve", ["build-serve"], function () {
+
+    return merge([
+        // build and package the definition files
+        packageDefinitions(),
+        // build and package the lib folder
+        packageLib(),
+        // bundle the core
+        packageBundle(),
+        // bundle provisioning
+        packageProvisioningBundle()
     ]);
 });

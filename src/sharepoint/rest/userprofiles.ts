@@ -1,12 +1,13 @@
 "use strict";
 
-import { Queryable, QueryableInstance, QueryableCollection } from "./Queryable";
+import { Queryable, QueryableInstance, QueryableCollection } from "./queryable";
 import * as Types from "./types";
 import * as FileUtil from "../../utils/files";
+import { ODataValue } from "./odata";
 
 export class UserProfileQuery extends QueryableInstance {
 
-    constructor(baseUrl: string | Queryable, path = "sp.userprofiles.peoplemanager") {
+    constructor(baseUrl: string | Queryable, path = "_api/sp.userprofiles.peoplemanager") {
         super(baseUrl, path);
 
         this.profileLoader = new ProfileLoader(baseUrl);
@@ -19,7 +20,7 @@ export class UserProfileQuery extends QueryableInstance {
      */
     public get editProfileLink(): Promise<string> {
         let q = new UserProfileQuery(this, "EditProfileLink");
-        return q.get();
+        return q.getAs(ODataValue<string>());
     }
 
     /**
@@ -27,7 +28,7 @@ export class UserProfileQuery extends QueryableInstance {
      */
     public get isMyPeopleListPublic(): Promise<boolean> {
         let q = new UserProfileQuery(this, "IsMyPeopleListPublic");
-        return q.get();
+        return q.getAs(ODataValue<boolean>());
     }
 
     /**
@@ -217,7 +218,7 @@ export class UserProfileQuery extends QueryableInstance {
 
 class ProfileLoader extends Queryable {
 
-    constructor(baseUrl: string | Queryable, path = "sp.userprofiles.profileloader.getprofileloader") {
+    constructor(baseUrl: string | Queryable, path = "_api/sp.userprofiles.profileloader.getprofileloader") {
         super(baseUrl, path);
     }
 
@@ -239,9 +240,8 @@ class ProfileLoader extends Queryable {
      * 
      */
     public get ownerUserProfile(): Promise<Types.UserProfile> {
-        let q = this.getParent(ProfileLoader);
-        q.append("sp.userprofiles.profileloader.getowneruserprofile");
-        return q.post();
+        let q = this.getParent(ProfileLoader, this.parentUrl, "sp.userprofiles.profileloader.getowneruserprofile");
+        return q.postAs<any, Types.UserProfile>();
     }
 
     /**
@@ -250,7 +250,7 @@ class ProfileLoader extends Queryable {
      */
     public get userProfile(): Promise<Types.UserProfile> {
         let q = new ProfileLoader(this, "getuserprofile");
-        return q.post();
+        return q.postAs<any, Types.UserProfile>();
     }
 
     /**

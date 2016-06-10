@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable, QueryableCollection, QueryableInstance } from "./Queryable";
+import { Queryable, QueryableCollection, QueryableInstance } from "./queryable";
 import { TypedHash } from "../../collections/collections";
 import { Util } from "../../utils/util";
 
@@ -55,7 +55,7 @@ export class Views extends QueryableCollection {
             "PersonalView": personalView
         }, additionalSettings));
 
-        return this.post({ body: postBody }).then((data) => {
+        return this.postAs<any, { Id: string }>({ body: postBody }).then((data) => {
             return {
                 view: this.getById(data.Id),
                 data: data

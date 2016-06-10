@@ -28,7 +28,13 @@ describe("Lists", () => {
     describe("getById", () => {
         it("Should return _api/web/lists('4FC65058-FDDE-4FAD-AB21-2E881E1CF527')", () => {
             let list = lists.getById("4FC65058-FDDE-4FAD-AB21-2E881E1CF527");
-            expect(list.toUrl()).to.equal("_api/web/lists(guid'4FC65058-FDDE-4FAD-AB21-2E881E1CF527')");
+            expect(list.toUrl()).to.equal("_api/web/lists('4FC65058-FDDE-4FAD-AB21-2E881E1CF527')");
+        });
+    });
+    describe("getById with {}", () => {
+        it("Should return _api/web/lists('{4FC65058-FDDE-4FAD-AB21-2E881E1CF527}')", () => {
+            let list = lists.getById("{4FC65058-FDDE-4FAD-AB21-2E881E1CF527}");
+            expect(list.toUrl()).to.equal("_api/web/lists('{4FC65058-FDDE-4FAD-AB21-2E881E1CF527}')");
         });
     });
 });
@@ -101,9 +107,9 @@ describe("List", () => {
     });
 
     describe("userCustomActions", () => {
-        it("should return _api/web/lists/getByTitle('Tasks')/UserCustomActions", () => {
+        it("should return _api/web/lists/getByTitle('Tasks')/usercustomactions", () => {
             expect(list.userCustomActions.toUrl())
-                .to.eq("_api/web/lists/getByTitle('Tasks')/UserCustomActions");
+                .to.eq("_api/web/lists/getByTitle('Tasks')/usercustomactions");
         });
     });
 

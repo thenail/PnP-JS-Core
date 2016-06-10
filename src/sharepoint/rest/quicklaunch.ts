@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable } from "./Queryable";
+import { Queryable } from "./queryable";
 
 /**
  * Describes the quick launch navigation

@@ -20,7 +20,7 @@ var gulp = require("gulp"),
 //* TEST
 //******************************************************************************
 
-gulp.task("build-tests", function() {
+gulp.task("build-tests", ["clean"], function() {
     var src = global.TSWorkspace.Tests.slice(0);
     src.push(global.TSTypings.Main);
 

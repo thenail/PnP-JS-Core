@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable, QueryableCollection, QueryableInstance } from "./Queryable";
+import { Queryable, QueryableCollection, QueryableInstance } from "./queryable";
 import { Item } from "./items";
 
 /**
@@ -326,8 +326,8 @@ export class File extends QueryableInstance {
      * @param fragment The file contents.
      * @returns The size of the total uploaded data in bytes. 
      */
-    public continueUpload(uploadId: string, fileOffset: number, fragment: Blob): Promise<number> {
-        return new File(this, `continueUpload(uploadId=guid'${uploadId}',fileOffset=${fileOffset})`).post({ body: fragment });
+    public continueUpload(uploadId: string, fileOffset: number, b: Blob): Promise<number> {
+        return new File(this, `continueUpload(uploadId=guid'${uploadId}',fileOffset=${fileOffset})`).postAs<any, number>({ body: b });
     }
 
     /**
@@ -376,7 +376,7 @@ export class File extends QueryableInstance {
      */
     public finishUpload(uploadId: string, fileOffset: number, fragment: Blob): Promise<FileAddResult> {
         return new File(this, `finishUpload(uploadId=guid'${uploadId}',fileOffset=${fileOffset})`)
-            .post({ body: fragment }).then((response) => {
+            .postAs<any, { ServerRelativeUrl: string }>({ body: fragment }).then((response) => {
                 return {
                     data: response,
                     file: new File(response.ServerRelativeUrl),
@@ -454,7 +454,7 @@ export class File extends QueryableInstance {
      * @returns The size of the total uploaded data in bytes. 
      */
     public startUpload(uploadId: string, fragment: Blob): Promise<number> {
-        return new File(this, `startUpload(uploadId=guid'${uploadId}')`).post({ body: fragment });
+        return new File(this, `startUpload(uploadId=guid'${uploadId}')`).postAs<any, number>({ body: fragment });
     }
 
     /**
@@ -620,11 +620,11 @@ export class Version extends QueryableInstance {
         return new Queryable(this, "versionLabel");
     }
 
-     /**
-     * Delete a specific version of a file.
-     * 
-     * @param eTag Value used in the IF-Match header, by default "*"
-     */
+    /**
+    * Delete a specific version of a file.
+    * 
+    * @param eTag Value used in the IF-Match header, by default "*"
+    */
     public delete(eTag = "*"): Promise<void> {
         return this.post({
             headers: {

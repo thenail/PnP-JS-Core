@@ -5,7 +5,7 @@ import { Search } from "../../../src/sharepoint/rest/search";
 
 describe("Search", () => {
     it("Should be an object", () => {
-        let searchquery = new Search("_api", {Querytext: "Test", RowLimit: 100, TrimDuplicates: false});
+        let searchquery = new Search("_api");
         expect(searchquery).to.be.a("object");
     });
 });

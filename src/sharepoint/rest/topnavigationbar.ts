@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable, QueryableInstance } from "./Queryable";
+import { Queryable, QueryableInstance } from "./queryable";
 
 /**
  * Describes the top navigation on the site

@@ -42,13 +42,14 @@ export default class SPListConfigurationProvider implements IConfigurationProvid
      */
     public getConfiguration(): Promise<TypedHash<string>> {
 
-        return this.web.lists.getByTitle(this.listTitle).items.select("Title", "Value").get().then(function (data) {
-            let configuration: TypedHash<string> = {};
-            data.forEach(i => {
-                configuration[i.Title] = i.Value;
+        return this.web.lists.getByTitle(this.listTitle).items.select("Title", "Value")
+            .getAs<any, { Title: string, Value: string }[]>().then(function (data) {
+                let configuration: TypedHash<string> = {};
+                data.forEach((i) => {
+                    configuration[i.Title] = i.Value;
+                });
+                return configuration;
             });
-            return configuration;
-        });
     }
 
     /**

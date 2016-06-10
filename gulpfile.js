@@ -57,7 +57,7 @@ global.pkg = require("./package.json");
 global.banner = [
     "/**",
     " * <%= pkg.name %> v<%= pkg.version %> - <%= pkg.description %>",
-    " * Copyright (c) 2016 <%= pkg.author.name %>",
+    " * Copyright (c) 2016 Microsoft",
     " * <%= pkg.license %>",
     " */", ""
 ].join("\n");
