@@ -3,6 +3,7 @@
 import { FetchClient } from "./fetchClient";
 import { DigestCache } from "./digestCache";
 import { Util } from "../utils/util";
+import { RuntimeConfig } from "../configuration/pnplibconfig";
 
 export class HttpClient {
 
@@ -20,18 +21,18 @@ export class HttpClient {
 
         let headers = new Headers();
 
-        if (typeof options.headers !== "undefined") {
-            let temp = <any>new Request("", { headers: options.headers });
-            temp.headers.forEach(function (value, name) {
-                headers.append(name, value);
-            });
-        }
+        // first we add the global headers so they can be overwritten by any passed in locally to this call
+        this.mergeHeaders(headers, RuntimeConfig.headers);
 
+        // second we add the local options so we can overwrite the globals
+        this.mergeHeaders(headers, options.headers);
+
+        // lastly we apply any default headers we need that may not exist
         if (!headers.has("Accept")) {
             headers.append("Accept", "application/json");
         }
 
-        if (!headers.has("Content-type")) {
+        if (!headers.has("Content-Type")) {
             headers.append("Content-Type", "application/json;odata=verbose;charset=utf-8");
         }
 
@@ -110,6 +111,15 @@ export class HttpClient {
     public post(url: string, options: any = {}): Promise<Response> {
         let opts = Util.extend(options, { method: "POST" });
         return this.fetch(url, opts);
+    }
+
+    private mergeHeaders(target: Headers, source: any): void {
+       if (typeof source !== "undefined") {
+            let temp = <any>new Request("", { headers: source });
+            temp.headers.forEach((value, name) => {
+                target.append(name, value);
+            });
+        }
     }
 }
 

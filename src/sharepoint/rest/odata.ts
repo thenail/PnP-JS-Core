@@ -1,5 +1,6 @@
 import { QueryableConstructor } from "./queryable";
 import { Util } from "../../utils/util";
+import { Logger } from "../../utils/logging";
 
 export interface ODataParser<T, U> {
     parse(r: Response): Promise<U>;
@@ -51,7 +52,7 @@ class ODataEntityParserImpl<T> extends ODataParserBase<T, T> {
 
     public parse(r: Response): Promise<T> {
         return super.parse(r).then(d => {
-            let o = new this.factory(Util.combinePaths("_api", d["odata.editLink"]), null);
+            let o = new this.factory(getEntityUrl(d), null);
             return Util.extend(o, d);
         });
     }
@@ -66,10 +67,26 @@ class ODataEntityArrayParserImpl<T> extends ODataParserBase<T, T[]> {
     public parse(r: Response): Promise<T[]> {
         return super.parse(r).then((d: any[]) => {
             return d.map(v => {
-                let o = new this.factory(Util.combinePaths("_api", v["odata.editLink"]), null);
+                let o = new this.factory(getEntityUrl(v), null);
                 return Util.extend(o, v);
             });
         });
+    }
+}
+
+function getEntityUrl(entity: any): string {
+
+    if (entity.hasOwnProperty("__metadata")) {
+        // we are dealing with verbose, which has an absolute uri
+        return entity.__metadata.uri;
+    } else if (entity.hasOwnProperty("odata.editLink")) {
+        // we are dealign with minimal metadata (default)
+        return Util.combinePaths("_api",  entity["odata.editLink"]);
+    } else {
+        // we are likely dealing with nometadata, so don't error but we won't be able to
+        // chain off these objects (write something to log?)
+        Logger.write("No uri information found in ODataEntity parsing, chaining will fail for this object.", Logger.LogLevel.Warning);
+        return "";
     }
 }
 
