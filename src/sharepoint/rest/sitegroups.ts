@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable, QueryableInstance, QueryableCollection } from "./Queryable";
+import { Queryable, QueryableInstance, QueryableCollection } from "./queryable";
 import {SiteUser, SiteUsers} from "./siteusers";
 import { Util } from "../../utils/util";
 

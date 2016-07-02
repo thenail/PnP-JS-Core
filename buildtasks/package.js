@@ -34,24 +34,14 @@ function packageDefinitions() {
 
     var src = global.TSWorkspace.Files.slice(0);
     src.push(global.TSTypings.Main);
-    src.push("!src/sharepoint/provisioning/**/*.*");
-
-    var src2 = ["src/sharepoint/provisioning/**/*.ts"];
-    src2.push(global.TSTypings.Main);
 
     // create a project specific to our typings build and specify the outFile. This will result
     // in a single pnp.d.ts file being creating and piped to the typings folder
     var typingsProject = tsc.createProject('tsconfig.json', { "declaration": true, "outFile": "pnp.js", "removeComments": false });
-    var typingsProject2 = tsc.createProject('tsconfig.json', { "declaration": true, "outFile": "pnp-provisioning.js", "removeComments": false });
 
-    return merge([
-        gulp.src(src)
+    return gulp.src(src)
             .pipe(tsc(typingsProject))
-            .dts.pipe(gulp.dest(global.TSDist.RootFolder)),
-        gulp.src(src2)
-            .pipe(tsc(typingsProject2))
-            .dts.pipe(gulp.dest(global.TSDist.RootFolder))
-    ]);
+            .dts.pipe(gulp.dest(global.TSDist.RootFolder));
 }
 
 function packageLib() {

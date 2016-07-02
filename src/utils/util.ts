@@ -99,7 +99,7 @@ export class Util {
             path += "?" + encodeURIComponent((new Date()).getTime().toString());
         }
         let head = document.getElementsByTagName("head");
-        if (head.length > 1) {
+        if (head.length > 0) {
             let e = document.createElement("link");
             head[0].appendChild(e);
             e.setAttribute("type", "text/css");

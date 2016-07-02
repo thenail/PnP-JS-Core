@@ -1,5 +1,5 @@
 /**
- * sp-pnp-js v0.0.18 - A reusable JavaScript library targeting SharePoint client-side development.
+ * sp-pnp-js v1.0.0 - A reusable JavaScript library targeting SharePoint client-side development.
  * Copyright (c) 2016 Microsoft
  * MIT
  */
@@ -82,19 +82,57 @@
     exports.Dictionary = Dictionary;
 });
 
-},{"../utils/util":19}],2:[function(require,module,exports){
+},{"../utils/util":21}],2:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./fetchClient", "./digestCache", "../utils/util"], factory);
+        define(["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var RuntimeConfigImpl = (function () {
+        function RuntimeConfigImpl() {
+            this._headers = null;
+        }
+        RuntimeConfigImpl.prototype.set = function (config) {
+            if (config.hasOwnProperty("headers")) {
+                this._headers = config.headers;
+            }
+        };
+        Object.defineProperty(RuntimeConfigImpl.prototype, "headers", {
+            get: function () {
+                return this._headers;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return RuntimeConfigImpl;
+    }());
+    exports.RuntimeConfigImpl = RuntimeConfigImpl;
+    var _runtimeConfig = new RuntimeConfigImpl();
+    exports.RuntimeConfig = _runtimeConfig;
+    function setRuntimeConfig(config) {
+        _runtimeConfig.set(config);
+    }
+    exports.setRuntimeConfig = setRuntimeConfig;
+});
+
+},{}],3:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./fetchClient", "./digestCache", "../utils/util", "../configuration/pnplibconfig"], factory);
     }
 })(function (require, exports) {
     "use strict";
     var fetchClient_1 = require("./fetchClient");
     var digestCache_1 = require("./digestCache");
     var util_1 = require("../utils/util");
+    var pnplibconfig_1 = require("../configuration/pnplibconfig");
     var HttpClient = (function () {
         function HttpClient(_impl) {
             if (_impl === void 0) { _impl = new fetchClient_1.FetchClient(); }
@@ -106,16 +144,12 @@
             var self = this;
             var opts = util_1.Util.extend(options, { cache: "no-cache", credentials: "same-origin" }, true);
             var headers = new Headers();
-            if (typeof options.headers !== "undefined") {
-                var temp = new Request("", { headers: options.headers });
-                temp.headers.forEach(function (value, name) {
-                    headers.append(name, value);
-                });
-            }
+            this.mergeHeaders(headers, pnplibconfig_1.RuntimeConfig.headers);
+            this.mergeHeaders(headers, options.headers);
             if (!headers.has("Accept")) {
                 headers.append("Accept", "application/json");
             }
-            if (!headers.has("Content-type")) {
+            if (!headers.has("Content-Type")) {
                 headers.append("Content-Type", "application/json;odata=verbose;charset=utf-8");
             }
             if (!headers.has("X-ClientService-ClientTag")) {
@@ -176,23 +210,32 @@
             var opts = util_1.Util.extend(options, { method: "POST" });
             return this.fetch(url, opts);
         };
+        HttpClient.prototype.mergeHeaders = function (target, source) {
+            if (typeof source !== "undefined") {
+                var temp = new Request("", { headers: source });
+                temp.headers.forEach(function (value, name) {
+                    target.append(name, value);
+                });
+            }
+        };
         return HttpClient;
     }());
     exports.HttpClient = HttpClient;
 });
 
-},{"../utils/util":19,"./digestCache":3,"./fetchClient":4}],3:[function(require,module,exports){
+},{"../configuration/pnplibconfig":2,"../utils/util":21,"./digestCache":4,"./fetchClient":5}],4:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../collections/collections", "../utils/util"], factory);
+        define(["require", "exports", "../collections/collections", "../utils/util", "../sharepoint/rest/odata"], factory);
     }
 })(function (require, exports) {
     "use strict";
     var collections_1 = require("../collections/collections");
     var util_1 = require("../utils/util");
+    var odata_1 = require("../sharepoint/rest/odata");
     var CachedDigest = (function () {
         function CachedDigest() {
         }
@@ -219,12 +262,13 @@
                 cache: "no-cache",
                 credentials: "same-origin",
                 headers: {
-                    "Accept": "application/json",
+                    "Accept": "application/json;odata=verbose",
                     "Content-type": "application/json;odata=verbose;charset=utf-8",
                 },
                 method: "POST",
             }).then(function (response) {
-                return response.json();
+                var parser = new odata_1.ODataDefaultParser();
+                return parser.parse(response).then(function (d) { return d.GetContextWebInformation; });
             }).then(function (data) {
                 var newCachedDigest = new CachedDigest();
                 newCachedDigest.value = data.FormDigestValue;
@@ -244,7 +288,7 @@
     exports.DigestCache = DigestCache;
 });
 
-},{"../collections/collections":1,"../utils/util":19}],4:[function(require,module,exports){
+},{"../collections/collections":1,"../sharepoint/rest/odata":19,"../utils/util":21}],5:[function(require,module,exports){
 (function (global){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
@@ -267,7 +311,7 @@
 });
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -314,7 +358,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectComposedLook = ObjectComposedLook;
 });
 
-},{"../util":17,"./ObjectHandlerBase":9}],6:[function(require,module,exports){
+},{"../util":18,"./ObjectHandlerBase":10}],7:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -412,7 +456,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectCustomActions = ObjectCustomActions;
 });
 
-},{"./ObjectHandlerBase":9}],7:[function(require,module,exports){
+},{"./ObjectHandlerBase":10}],8:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -464,7 +508,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectFeatures = ObjectFeatures;
 });
 
-},{"./ObjectHandlerBase":9}],8:[function(require,module,exports){
+},{"./ObjectHandlerBase":10}],9:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -729,7 +773,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     ;
 });
 
-},{"../../../utils/util":19,"../util":17,"./ObjectHandlerBase":9}],9:[function(require,module,exports){
+},{"../../../utils/util":21,"../util":18,"./ObjectHandlerBase":10}],10:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -760,7 +804,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectHandlerBase = ObjectHandlerBase;
 });
 
-},{"../../../net/HttpClient":2,"../../../utils/logging":18}],10:[function(require,module,exports){
+},{"../../../net/HttpClient":3,"../../../utils/logging":20}],11:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1277,7 +1321,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectLists = ObjectLists;
 });
 
-},{"../Sequencer/Sequencer":15,"./ObjectHandlerBase":9}],11:[function(require,module,exports){
+},{"../Sequencer/Sequencer":16,"./ObjectHandlerBase":10}],12:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1382,7 +1426,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectNavigation = ObjectNavigation;
 });
 
-},{"../util":17,"./ObjectHandlerBase":9}],12:[function(require,module,exports){
+},{"../util":18,"./ObjectHandlerBase":10}],13:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1455,7 +1499,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectPropertyBagEntries = ObjectPropertyBagEntries;
 });
 
-},{"../util":17,"./ObjectHandlerBase":9}],13:[function(require,module,exports){
+},{"../util":18,"./ObjectHandlerBase":10}],14:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1517,7 +1561,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ObjectWebSettings = ObjectWebSettings;
 });
 
-},{"./ObjectHandlerBase":9}],14:[function(require,module,exports){
+},{"./ObjectHandlerBase":10}],15:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -1552,7 +1596,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ProvisioningStep = ProvisioningStep;
 });
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -1586,7 +1630,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Sequencer = Sequencer;
 });
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -1677,7 +1721,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Provisioning = Provisioning;
 });
 
-},{"../../net/HttpClient":2,"../../utils/logging":18,"./ObjectHandlers/ObjectComposedLook":5,"./ObjectHandlers/ObjectCustomActions":6,"./ObjectHandlers/ObjectFeatures":7,"./ObjectHandlers/ObjectFiles":8,"./ObjectHandlers/ObjectLists":10,"./ObjectHandlers/ObjectNavigation":11,"./ObjectHandlers/ObjectPropertyBagEntries":12,"./ObjectHandlers/ObjectWebSettings":13,"./ProvisioningStep":14,"./util":17}],17:[function(require,module,exports){
+},{"../../net/HttpClient":3,"../../utils/logging":20,"./ObjectHandlers/ObjectComposedLook":6,"./ObjectHandlers/ObjectCustomActions":7,"./ObjectHandlers/ObjectFeatures":8,"./ObjectHandlers/ObjectFiles":9,"./ObjectHandlers/ObjectLists":11,"./ObjectHandlers/ObjectNavigation":12,"./ObjectHandlers/ObjectPropertyBagEntries":13,"./ObjectHandlers/ObjectWebSettings":14,"./ProvisioningStep":15,"./util":18}],18:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -1713,7 +1757,130 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Util = Util;
 });
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "../../utils/util", "../../utils/logging"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var util_1 = require("../../utils/util");
+    var logging_1 = require("../../utils/logging");
+    var ODataParserBase = (function () {
+        function ODataParserBase() {
+        }
+        ODataParserBase.prototype.parse = function (r) {
+            return r.json().then(function (json) {
+                if (json.hasOwnProperty("d")) {
+                    if (json.d.hasOwnProperty("results")) {
+                        return json.d.results;
+                    }
+                    return json.d;
+                }
+                else if (json.hasOwnProperty("value")) {
+                    return json.value;
+                }
+                return json;
+            });
+        };
+        return ODataParserBase;
+    }());
+    exports.ODataParserBase = ODataParserBase;
+    var ODataDefaultParser = (function (_super) {
+        __extends(ODataDefaultParser, _super);
+        function ODataDefaultParser() {
+            _super.apply(this, arguments);
+        }
+        return ODataDefaultParser;
+    }(ODataParserBase));
+    exports.ODataDefaultParser = ODataDefaultParser;
+    var ODataRawParserImpl = (function () {
+        function ODataRawParserImpl() {
+        }
+        ODataRawParserImpl.prototype.parse = function (r) {
+            return r.json();
+        };
+        return ODataRawParserImpl;
+    }());
+    exports.ODataRawParserImpl = ODataRawParserImpl;
+    var ODataValueParserImpl = (function (_super) {
+        __extends(ODataValueParserImpl, _super);
+        function ODataValueParserImpl() {
+            _super.apply(this, arguments);
+        }
+        ODataValueParserImpl.prototype.parse = function (r) {
+            return _super.prototype.parse.call(this, r).then(function (d) { return d; });
+        };
+        return ODataValueParserImpl;
+    }(ODataParserBase));
+    var ODataEntityParserImpl = (function (_super) {
+        __extends(ODataEntityParserImpl, _super);
+        function ODataEntityParserImpl(factory) {
+            _super.call(this);
+            this.factory = factory;
+        }
+        ODataEntityParserImpl.prototype.parse = function (r) {
+            var _this = this;
+            return _super.prototype.parse.call(this, r).then(function (d) {
+                var o = new _this.factory(getEntityUrl(d), null);
+                return util_1.Util.extend(o, d);
+            });
+        };
+        return ODataEntityParserImpl;
+    }(ODataParserBase));
+    var ODataEntityArrayParserImpl = (function (_super) {
+        __extends(ODataEntityArrayParserImpl, _super);
+        function ODataEntityArrayParserImpl(factory) {
+            _super.call(this);
+            this.factory = factory;
+        }
+        ODataEntityArrayParserImpl.prototype.parse = function (r) {
+            var _this = this;
+            return _super.prototype.parse.call(this, r).then(function (d) {
+                return d.map(function (v) {
+                    var o = new _this.factory(getEntityUrl(v), null);
+                    return util_1.Util.extend(o, v);
+                });
+            });
+        };
+        return ODataEntityArrayParserImpl;
+    }(ODataParserBase));
+    function getEntityUrl(entity) {
+        if (entity.hasOwnProperty("__metadata")) {
+            return entity.__metadata.uri;
+        }
+        else if (entity.hasOwnProperty("odata.editLink")) {
+            return util_1.Util.combinePaths("_api", entity["odata.editLink"]);
+        }
+        else {
+            logging_1.Logger.write("No uri information found in ODataEntity parsing, chaining will fail for this object.", logging_1.Logger.LogLevel.Warning);
+            return "";
+        }
+    }
+    exports.ODataRaw = new ODataRawParserImpl();
+    function ODataValue() {
+        return new ODataValueParserImpl();
+    }
+    exports.ODataValue = ODataValue;
+    function ODataEntity(factory) {
+        return new ODataEntityParserImpl(factory);
+    }
+    exports.ODataEntity = ODataEntity;
+    function ODataEntityArray(factory) {
+        return new ODataEntityArrayParserImpl(factory);
+    }
+    exports.ODataEntityArray = ODataEntityArray;
+});
+
+},{"../../utils/logging":20,"../../utils/util":21}],20:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -1909,7 +2076,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     })(Logger = exports.Logger || (exports.Logger = {}));
 });
 
-},{}],19:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -1991,7 +2158,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                 path += "?" + encodeURIComponent((new Date()).getTime().toString());
             }
             var head = document.getElementsByTagName("head");
-            if (head.length > 1) {
+            if (head.length > 0) {
                 var e = document.createElement("link");
                 head[0].appendChild(e);
                 e.setAttribute("type", "text/css");
@@ -2074,5 +2241,5 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Util = Util;
 });
 
-},{}]},{},[16])(16)
+},{}]},{},[17])(17)
 });

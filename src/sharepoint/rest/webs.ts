@@ -1,11 +1,11 @@
 "use strict";
 
-import { Queryable, QueryableCollection } from "./Queryable";
-import { QueryableSecurable } from "./QueryableSecurable";
+import { Queryable, QueryableCollection } from "./queryable";
+import { QueryableSecurable } from "./queryablesecurable";
 import { Lists } from "./lists";
 import { Navigation } from "./navigation";
 import { SiteGroups } from "./sitegroups";
-import { ContentTypes } from "./contentTypes";
+import { ContentTypes } from "./contenttypes";
 import { Folders, Folder } from "./folders";
 import { RoleDefinitions } from "./roles";
 import { File } from "./files";

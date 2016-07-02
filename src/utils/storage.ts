@@ -1,6 +1,6 @@
 "use strict";
 
-import { Util } from "./Util";
+import { Util } from "./util";
 
 /**
  * A wrapper class to provide a consistent interface to browser based storage

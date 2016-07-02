@@ -1,7 +1,7 @@
 "use strict";
 
-import { Queryable, QueryableCollection, QueryableInstance } from "./Queryable";
-import { QueryableSecurable } from "./QueryableSecurable";
+import { Queryable, QueryableCollection, QueryableInstance } from "./queryable";
+import { QueryableSecurable } from "./queryablesecurable";
 import { Folder } from "./folders";
 import { ContentType } from "./contenttypes";
 import { TypedHash } from "../../collections/collections";

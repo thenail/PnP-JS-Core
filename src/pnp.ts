@@ -1,10 +1,11 @@
 "use strict";
 
-import { Util } from "./utils/Util";
-import { PnPClientStorage } from "./utils/Storage";
+import { Util } from "./utils/util";
+import { PnPClientStorage } from "./utils/storage";
 import { Settings } from "./configuration/configuration";
 import { Logger } from "./utils/logging";
-import { Rest } from "./SharePoint/Rest/rest";
+import { Rest } from "./sharepoint/rest/rest";
+import { setRuntimeConfig, LibraryConfiguration } from "./configuration/pnplibconfig";
 
 /**
  * Root class of the Patterns and Practices namespace, provides an entry point to the library
@@ -35,6 +36,11 @@ export const config = new Settings();
  */
 export const log = Logger;
 
+/**
+ * Allows for the configuration of the library
+ */
+export const setup: (config: LibraryConfiguration) => void = setRuntimeConfig;
+
 // creating this class instead of directly assigning to default fixes issue #116
 let Def = {
     /**
@@ -45,6 +51,10 @@ let Def = {
      * Global logging instance to which subscribers can be registered and messages written
      */
     log: log,
+    /**
+     * Provides access to local and session storage
+     */
+    setup: setup,
     /**
      * Provides access to the REST interface
      */

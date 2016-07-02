@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable, QueryableInstance, QueryableCollection } from "./Queryable";
+import { Queryable, QueryableInstance, QueryableCollection } from "./queryable";
 import * as Types from "./types";
 import * as FileUtil from "../../utils/files";
 import { ODataValue } from "./odata";

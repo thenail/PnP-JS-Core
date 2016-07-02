@@ -3,6 +3,7 @@
 import { Dictionary } from "../collections/collections";
 import { HttpClient } from "./httpClient";
 import { Util } from "../utils/util";
+import { ODataDefaultParser } from "../sharepoint/rest/odata";
 
 export class CachedDigest {
     public expiration: Date;
@@ -30,13 +31,14 @@ export class DigestCache {
             cache: "no-cache",
             credentials: "same-origin",
             headers: {
-                "Accept": "application/json",
+                "Accept": "application/json;odata=verbose",
                 "Content-type": "application/json;odata=verbose;charset=utf-8",
             },
             method: "POST",
-        }).then(function(response) {
-            return response.json();
-        }).then(function(data) {
+        }).then(function (response) {
+            let parser = new ODataDefaultParser();
+            return parser.parse(response).then((d: any) => d.GetContextWebInformation);
+        }).then(function (data) {
             let newCachedDigest = new CachedDigest();
             newCachedDigest.value = data.FormDigestValue;
             let seconds = data.FormDigestTimeoutSeconds;

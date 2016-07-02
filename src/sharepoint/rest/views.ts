@@ -1,6 +1,6 @@
 "use strict";
 
-import { Queryable, QueryableCollection, QueryableInstance } from "./Queryable";
+import { Queryable, QueryableCollection, QueryableInstance } from "./queryable";
 import { TypedHash } from "../../collections/collections";
 import { Util } from "../../utils/util";
 

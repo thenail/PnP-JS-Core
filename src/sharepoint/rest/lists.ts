@@ -5,7 +5,7 @@ import { Views, View } from "./views";
 import { ContentTypes } from "./contenttypes";
 import { Fields } from "./fields";
 import { Queryable, QueryableCollection } from "./queryable";
-import { QueryableSecurable } from "./QueryableSecurable";
+import { QueryableSecurable } from "./queryablesecurable";
 import { Util } from "../../utils/util";
 import { TypedHash } from "../../collections/collections";
 import * as Types from "./types";

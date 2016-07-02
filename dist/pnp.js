@@ -1,231 +1,533 @@
 /**
- * sp-pnp-js v0.0.18 - A reusable JavaScript library targeting SharePoint client-side development.
+ * sp-pnp-js v1.0.0 - A reusable JavaScript library targeting SharePoint client-side development.
  * Copyright (c) 2016 Microsoft
  * MIT
  */
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.$pnp = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../../utils/util", "../../collections/collections", "../../net/HttpClient", "./odata"], factory);
+        define(["require", "exports", "../utils/util"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var util_1 = require("../../utils/util");
-    var collections_1 = require("../../collections/collections");
-    var HttpClient_1 = require("../../net/HttpClient");
-    var odata_1 = require("./odata");
-    var Queryable = (function () {
-        function Queryable(baseUrl, path) {
-            this._query = new collections_1.Dictionary();
-            if (typeof baseUrl === "string") {
-                var urlStr = baseUrl;
-                if (urlStr.lastIndexOf("/") < 0) {
-                    this._parentUrl = urlStr;
-                    this._url = util_1.Util.combinePaths(urlStr, path);
-                }
-                else if (urlStr.lastIndexOf("/") > urlStr.lastIndexOf("(")) {
-                    var index = urlStr.lastIndexOf("/");
-                    this._parentUrl = urlStr.slice(0, index);
-                    path = util_1.Util.combinePaths(urlStr.slice(index), path);
-                    this._url = util_1.Util.combinePaths(this._parentUrl, path);
-                }
-                else {
-                    var index = urlStr.lastIndexOf("(");
-                    this._parentUrl = urlStr.slice(0, index);
-                    this._url = util_1.Util.combinePaths(urlStr, path);
+    var util_1 = require("../utils/util");
+    var Dictionary = (function () {
+        function Dictionary() {
+            this.keys = [];
+            this.values = [];
+        }
+        Dictionary.prototype.get = function (key) {
+            var index = this.keys.indexOf(key);
+            if (index < 0) {
+                return null;
+            }
+            return this.values[index];
+        };
+        Dictionary.prototype.add = function (key, o) {
+            var index = this.keys.indexOf(key);
+            if (index > -1) {
+                this.values[index] = o;
+            }
+            else {
+                this.keys.push(key);
+                this.values.push(o);
+            }
+        };
+        Dictionary.prototype.merge = function (source) {
+            if (util_1.Util.isFunction(source["getKeys"])) {
+                var sourceAsDictionary = source;
+                var keys = sourceAsDictionary.getKeys();
+                var l = keys.length;
+                for (var i = 0; i < l; i++) {
+                    this.add(keys[i], sourceAsDictionary.get(keys[i]));
                 }
             }
             else {
-                var q = baseUrl;
-                this._parentUrl = q._url;
-                var target = q._query.get("@target");
-                if (target !== null) {
-                    this._query.add("@target", target);
-                }
-                this._url = util_1.Util.combinePaths(this._parentUrl, path);
-            }
-        }
-        Queryable.prototype.concat = function (pathPart) {
-            this._url += pathPart;
-        };
-        Queryable.prototype.append = function (pathPart) {
-            this._url = util_1.Util.combinePaths(this._url, pathPart);
-        };
-        Object.defineProperty(Queryable.prototype, "parentUrl", {
-            get: function () {
-                return this._parentUrl;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Queryable.prototype, "query", {
-            get: function () {
-                return this._query;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Queryable.prototype.toUrl = function () {
-            if (!util_1.Util.isUrlAbsolute(this._url)) {
-                if (typeof _spPageContextInfo !== "undefined") {
-                    if (_spPageContextInfo.hasOwnProperty("webAbsoluteUrl")) {
-                        return util_1.Util.combinePaths(_spPageContextInfo.webAbsoluteUrl, this._url);
-                    }
-                    else if (_spPageContextInfo.hasOwnProperty("webServerRelativeUrl")) {
-                        return util_1.Util.combinePaths(_spPageContextInfo.webServerRelativeUrl, this._url);
+                var sourceAsHash = source;
+                for (var key in sourceAsHash) {
+                    if (sourceAsHash.hasOwnProperty(key)) {
+                        this.add(key, source[key]);
                     }
                 }
             }
-            return this._url;
         };
-        Queryable.prototype.toUrlAndQuery = function () {
-            var _this = this;
-            var url = this.toUrl();
-            if (this._query.count() > 0) {
-                url += "?";
-                var keys = this._query.getKeys();
-                url += keys.map(function (key, ix, arr) { return (key + "=" + _this._query.get(key)); }).join("&");
+        Dictionary.prototype.remove = function (key) {
+            var index = this.keys.indexOf(key);
+            if (index < 0) {
+                return null;
             }
-            return url;
+            var val = this.values[index];
+            this.keys.splice(index, 1);
+            this.values.splice(index, 1);
+            return val;
         };
-        Queryable.prototype.get = function (parser) {
-            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
-            return this.getImpl(parser);
+        Dictionary.prototype.getKeys = function () {
+            return this.keys;
         };
-        Queryable.prototype.getAs = function (parser) {
-            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
-            return this.getImpl(parser);
+        Dictionary.prototype.getValues = function () {
+            return this.values;
         };
-        Queryable.prototype.post = function (postOptions, parser) {
-            if (postOptions === void 0) { postOptions = {}; }
-            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
-            return this.postImpl(postOptions, parser);
+        Dictionary.prototype.clear = function () {
+            this.keys = [];
+            this.values = [];
         };
-        Queryable.prototype.postAs = function (postOptions, parser) {
-            if (postOptions === void 0) { postOptions = {}; }
-            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
-            return this.postImpl(postOptions, parser);
+        Dictionary.prototype.count = function () {
+            return this.keys.length;
         };
-        Queryable.prototype.getParent = function (factory, baseUrl, path) {
-            if (baseUrl === void 0) { baseUrl = this.parentUrl; }
-            var parent = new factory(baseUrl, path);
-            var target = this.query.get("@target");
-            if (target !== null) {
-                parent.query.add("@target", target);
-            }
-            return parent;
-        };
-        Queryable.prototype.getImpl = function (parser) {
-            var client = new HttpClient_1.HttpClient();
-            return client.get(this.toUrlAndQuery()).then(function (response) {
-                if (!response.ok) {
-                    throw "Error making GET request: " + response.statusText;
-                }
-                return parser.parse(response);
-            });
-        };
-        Queryable.prototype.postImpl = function (postOptions, parser) {
-            var client = new HttpClient_1.HttpClient();
-            return client.post(this.toUrlAndQuery(), postOptions).then(function (response) {
-                if (!response.ok) {
-                    throw "Error making POST request: " + response.statusText;
-                }
-                if ((response.headers.has("Content-Length") && parseFloat(response.headers.get("Content-Length")) === 0)
-                    || response.status === 204) {
-                    return new Promise(function (resolve, reject) { resolve({}); });
-                }
-                return parser.parse(response);
-            });
-        };
-        return Queryable;
+        return Dictionary;
     }());
-    exports.Queryable = Queryable;
-    var QueryableCollection = (function (_super) {
-        __extends(QueryableCollection, _super);
-        function QueryableCollection() {
-            _super.apply(this, arguments);
-        }
-        QueryableCollection.prototype.filter = function (filter) {
-            this._query.add("$filter", filter);
-            return this;
-        };
-        QueryableCollection.prototype.select = function () {
-            var selects = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                selects[_i - 0] = arguments[_i];
-            }
-            this._query.add("$select", selects.join(","));
-            return this;
-        };
-        QueryableCollection.prototype.expand = function () {
-            var expands = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                expands[_i - 0] = arguments[_i];
-            }
-            this._query.add("$expand", expands.join(","));
-            return this;
-        };
-        QueryableCollection.prototype.orderBy = function (orderBy, ascending) {
-            if (ascending === void 0) { ascending = false; }
-            var keys = this._query.getKeys();
-            var query = [];
-            var asc = ascending ? " asc" : "";
-            for (var i = 0; i < keys.length; i++) {
-                if (keys[i] === "$orderby") {
-                    query.push(this._query.get("$orderby"));
-                    break;
-                }
-            }
-            query.push("" + orderBy + asc);
-            this._query.add("$orderby", query.join(","));
-            return this;
-        };
-        QueryableCollection.prototype.skip = function (skip) {
-            this._query.add("$skip", skip.toString());
-            return this;
-        };
-        QueryableCollection.prototype.top = function (top) {
-            this._query.add("$top", top.toString());
-            return this;
-        };
-        return QueryableCollection;
-    }(Queryable));
-    exports.QueryableCollection = QueryableCollection;
-    var QueryableInstance = (function (_super) {
-        __extends(QueryableInstance, _super);
-        function QueryableInstance() {
-            _super.apply(this, arguments);
-        }
-        QueryableInstance.prototype.select = function () {
-            var selects = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                selects[_i - 0] = arguments[_i];
-            }
-            this._query.add("$select", selects.join(","));
-            return this;
-        };
-        QueryableInstance.prototype.expand = function () {
-            var expands = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                expands[_i - 0] = arguments[_i];
-            }
-            this._query.add("$expand", expands.join(","));
-            return this;
-        };
-        return QueryableInstance;
-    }(Queryable));
-    exports.QueryableInstance = QueryableInstance;
+    exports.Dictionary = Dictionary;
 });
 
-},{"../../collections/collections":26,"../../net/HttpClient":31,"../../utils/util":40,"./odata":11}],2:[function(require,module,exports){
+},{"../utils/util":37}],2:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "../collections/collections", "./providers/providers"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var Collections = require("../collections/collections");
+    var providers = require("./providers/providers");
+    var Settings = (function () {
+        function Settings() {
+            this.Providers = providers;
+            this._settings = new Collections.Dictionary();
+        }
+        Settings.prototype.add = function (key, value) {
+            this._settings.add(key, value);
+        };
+        Settings.prototype.addJSON = function (key, value) {
+            this._settings.add(key, JSON.stringify(value));
+        };
+        Settings.prototype.apply = function (hash) {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                try {
+                    _this._settings.merge(hash);
+                    resolve();
+                }
+                catch (e) {
+                    reject(e);
+                }
+            });
+        };
+        Settings.prototype.load = function (provider) {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                provider.getConfiguration().then(function (value) {
+                    _this._settings.merge(value);
+                    resolve();
+                }).catch(function (reason) {
+                    reject(reason);
+                });
+            });
+        };
+        Settings.prototype.get = function (key) {
+            return this._settings.get(key);
+        };
+        Settings.prototype.getJSON = function (key) {
+            var o = this.get(key);
+            if (typeof o === "undefined" || o === null) {
+                return o;
+            }
+            return JSON.parse(o);
+        };
+        return Settings;
+    }());
+    exports.Settings = Settings;
+});
+
+},{"../collections/collections":1,"./providers/providers":5}],3:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var RuntimeConfigImpl = (function () {
+        function RuntimeConfigImpl() {
+            this._headers = null;
+        }
+        RuntimeConfigImpl.prototype.set = function (config) {
+            if (config.hasOwnProperty("headers")) {
+                this._headers = config.headers;
+            }
+        };
+        Object.defineProperty(RuntimeConfigImpl.prototype, "headers", {
+            get: function () {
+                return this._headers;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return RuntimeConfigImpl;
+    }());
+    exports.RuntimeConfigImpl = RuntimeConfigImpl;
+    var _runtimeConfig = new RuntimeConfigImpl();
+    exports.RuntimeConfig = _runtimeConfig;
+    function setRuntimeConfig(config) {
+        _runtimeConfig.set(config);
+    }
+    exports.setRuntimeConfig = setRuntimeConfig;
+});
+
+},{}],4:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "../../utils/storage"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var storage = require("../../utils/storage");
+    var CachingConfigurationProvider = (function () {
+        function CachingConfigurationProvider(wrappedProvider, cacheKey, cacheStore) {
+            this.wrappedProvider = wrappedProvider;
+            this.store = (cacheStore) ? cacheStore : this.selectPnPCache();
+            this.cacheKey = "_configcache_" + cacheKey;
+        }
+        CachingConfigurationProvider.prototype.getWrappedProvider = function () {
+            return this.wrappedProvider;
+        };
+        CachingConfigurationProvider.prototype.getConfiguration = function () {
+            var _this = this;
+            if ((!this.store) || (!this.store.enabled)) {
+                return this.wrappedProvider.getConfiguration();
+            }
+            var cachedConfig = this.store.get(this.cacheKey);
+            if (cachedConfig) {
+                return new Promise(function (resolve, reject) {
+                    resolve(cachedConfig);
+                });
+            }
+            var providerPromise = this.wrappedProvider.getConfiguration();
+            providerPromise.then(function (providedConfig) {
+                _this.store.put(_this.cacheKey, providedConfig);
+            });
+            return providerPromise;
+        };
+        CachingConfigurationProvider.prototype.selectPnPCache = function () {
+            var pnpCache = new storage.PnPClientStorage();
+            if ((pnpCache.local) && (pnpCache.local.enabled)) {
+                return pnpCache.local;
+            }
+            if ((pnpCache.session) && (pnpCache.session.enabled)) {
+                return pnpCache.session;
+            }
+            throw new Error("Cannot create a caching configuration provider since cache is not available.");
+        };
+        return CachingConfigurationProvider;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = CachingConfigurationProvider;
+});
+
+},{"../../utils/storage":36}],5:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./cachingConfigurationProvider", "./spListConfigurationProvider"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var cachingConfigurationProvider_1 = require("./cachingConfigurationProvider");
+    var spListConfigurationProvider_1 = require("./spListConfigurationProvider");
+    exports.CachingConfigurationProvider = cachingConfigurationProvider_1.default;
+    exports.SPListConfigurationProvider = spListConfigurationProvider_1.default;
+});
+
+},{"./cachingConfigurationProvider":4,"./spListConfigurationProvider":6}],6:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./cachingConfigurationProvider"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var cachingConfigurationProvider_1 = require("./cachingConfigurationProvider");
+    var SPListConfigurationProvider = (function () {
+        function SPListConfigurationProvider(sourceWeb, sourceListTitle) {
+            if (sourceListTitle === void 0) { sourceListTitle = "config"; }
+            this.sourceWeb = sourceWeb;
+            this.sourceListTitle = sourceListTitle;
+        }
+        Object.defineProperty(SPListConfigurationProvider.prototype, "web", {
+            get: function () {
+                return this.sourceWeb;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(SPListConfigurationProvider.prototype, "listTitle", {
+            get: function () {
+                return this.sourceListTitle;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        SPListConfigurationProvider.prototype.getConfiguration = function () {
+            return this.web.lists.getByTitle(this.listTitle).items.select("Title", "Value")
+                .getAs().then(function (data) {
+                var configuration = {};
+                data.forEach(function (i) {
+                    configuration[i.Title] = i.Value;
+                });
+                return configuration;
+            });
+        };
+        SPListConfigurationProvider.prototype.asCaching = function () {
+            var cacheKey = "splist_" + this.web.toUrl() + "+" + this.listTitle;
+            return new cachingConfigurationProvider_1.default(this, cacheKey);
+        };
+        return SPListConfigurationProvider;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = SPListConfigurationProvider;
+});
+
+},{"./cachingConfigurationProvider":4}],7:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./fetchClient", "./digestCache", "../utils/util", "../configuration/pnplibconfig"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var fetchClient_1 = require("./fetchClient");
+    var digestCache_1 = require("./digestCache");
+    var util_1 = require("../utils/util");
+    var pnplibconfig_1 = require("../configuration/pnplibconfig");
+    var HttpClient = (function () {
+        function HttpClient(_impl) {
+            if (_impl === void 0) { _impl = new fetchClient_1.FetchClient(); }
+            this._impl = _impl;
+            this._digestCache = new digestCache_1.DigestCache(this);
+        }
+        HttpClient.prototype.fetch = function (url, options) {
+            if (options === void 0) { options = {}; }
+            var self = this;
+            var opts = util_1.Util.extend(options, { cache: "no-cache", credentials: "same-origin" }, true);
+            var headers = new Headers();
+            this.mergeHeaders(headers, pnplibconfig_1.RuntimeConfig.headers);
+            this.mergeHeaders(headers, options.headers);
+            if (!headers.has("Accept")) {
+                headers.append("Accept", "application/json");
+            }
+            if (!headers.has("Content-Type")) {
+                headers.append("Content-Type", "application/json;odata=verbose;charset=utf-8");
+            }
+            if (!headers.has("X-ClientService-ClientTag")) {
+                headers.append("X-ClientService-ClientTag", "SharePoint.PnP.JavaScriptCore");
+            }
+            opts = util_1.Util.extend(opts, { headers: headers });
+            if (opts.method && opts.method.toUpperCase() !== "GET") {
+                if (!headers.has("X-RequestDigest")) {
+                    var index = url.indexOf("/_api/");
+                    if (index < 0) {
+                        throw new Error("Unable to determine API url");
+                    }
+                    var webUrl = url.substr(0, index);
+                    return this._digestCache.getDigest(webUrl)
+                        .then(function (digest) {
+                        headers.append("X-RequestDigest", digest);
+                        return self.fetchRaw(url, opts);
+                    });
+                }
+            }
+            return self.fetchRaw(url, opts);
+        };
+        HttpClient.prototype.fetchRaw = function (url, options) {
+            var _this = this;
+            if (options === void 0) { options = {}; }
+            var retry = function (ctx) {
+                _this._impl.fetch(url, options).then(function (response) { return ctx.resolve(response); }).catch(function (response) {
+                    var delay = ctx.delay;
+                    if (response.status !== 429 && response.status !== 503) {
+                        ctx.reject(response);
+                    }
+                    ctx.delay *= 2;
+                    ctx.attempts++;
+                    if (ctx.retryCount <= ctx.attempts) {
+                        ctx.reject(response);
+                    }
+                    setTimeout(util_1.Util.getCtxCallback(_this, retry, ctx), delay);
+                });
+            };
+            return new Promise(function (resolve, reject) {
+                var retryContext = {
+                    attempts: 0,
+                    delay: 100,
+                    reject: reject,
+                    resolve: resolve,
+                    retryCount: 7,
+                };
+                retry.call(_this, retryContext);
+            });
+        };
+        HttpClient.prototype.get = function (url, options) {
+            if (options === void 0) { options = {}; }
+            var opts = util_1.Util.extend(options, { method: "GET" });
+            return this.fetch(url, opts);
+        };
+        HttpClient.prototype.post = function (url, options) {
+            if (options === void 0) { options = {}; }
+            var opts = util_1.Util.extend(options, { method: "POST" });
+            return this.fetch(url, opts);
+        };
+        HttpClient.prototype.mergeHeaders = function (target, source) {
+            if (typeof source !== "undefined") {
+                var temp = new Request("", { headers: source });
+                temp.headers.forEach(function (value, name) {
+                    target.append(name, value);
+                });
+            }
+        };
+        return HttpClient;
+    }());
+    exports.HttpClient = HttpClient;
+});
+
+},{"../configuration/pnplibconfig":3,"../utils/util":37,"./digestCache":8,"./fetchClient":9}],8:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "../collections/collections", "../utils/util", "../sharepoint/rest/odata"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var collections_1 = require("../collections/collections");
+    var util_1 = require("../utils/util");
+    var odata_1 = require("../sharepoint/rest/odata");
+    var CachedDigest = (function () {
+        function CachedDigest() {
+        }
+        return CachedDigest;
+    }());
+    exports.CachedDigest = CachedDigest;
+    var DigestCache = (function () {
+        function DigestCache(_httpClient, _digests) {
+            if (_digests === void 0) { _digests = new collections_1.Dictionary(); }
+            this._httpClient = _httpClient;
+            this._digests = _digests;
+        }
+        DigestCache.prototype.getDigest = function (webUrl) {
+            var self = this;
+            var cachedDigest = this._digests.get(webUrl);
+            if (cachedDigest !== null) {
+                var now = new Date();
+                if (now < cachedDigest.expiration) {
+                    return Promise.resolve(cachedDigest.value);
+                }
+            }
+            var url = util_1.Util.combinePaths(webUrl, "/_api/contextinfo");
+            return self._httpClient.fetchRaw(url, {
+                cache: "no-cache",
+                credentials: "same-origin",
+                headers: {
+                    "Accept": "application/json;odata=verbose",
+                    "Content-type": "application/json;odata=verbose;charset=utf-8",
+                },
+                method: "POST",
+            }).then(function (response) {
+                var parser = new odata_1.ODataDefaultParser();
+                return parser.parse(response).then(function (d) { return d.GetContextWebInformation; });
+            }).then(function (data) {
+                var newCachedDigest = new CachedDigest();
+                newCachedDigest.value = data.FormDigestValue;
+                var seconds = data.FormDigestTimeoutSeconds;
+                var expiration = new Date();
+                expiration.setTime(expiration.getTime() + 1000 * seconds);
+                newCachedDigest.expiration = expiration;
+                self._digests.add(webUrl, newCachedDigest);
+                return newCachedDigest.value;
+            });
+        };
+        DigestCache.prototype.clear = function () {
+            this._digests.clear();
+        };
+        return DigestCache;
+    }());
+    exports.DigestCache = DigestCache;
+});
+
+},{"../collections/collections":1,"../sharepoint/rest/odata":18,"../utils/util":37}],9:[function(require,module,exports){
+(function (global){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var FetchClient = (function () {
+        function FetchClient() {
+        }
+        FetchClient.prototype.fetch = function (url, options) {
+            return global.fetch(url, options);
+        };
+        return FetchClient;
+    }());
+    exports.FetchClient = FetchClient;
+});
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{}],10:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./utils/util", "./utils/storage", "./configuration/configuration", "./utils/logging", "./sharepoint/rest/rest", "./configuration/pnplibconfig"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var util_1 = require("./utils/util");
+    var storage_1 = require("./utils/storage");
+    var configuration_1 = require("./configuration/configuration");
+    var logging_1 = require("./utils/logging");
+    var rest_1 = require("./sharepoint/rest/rest");
+    var pnplibconfig_1 = require("./configuration/pnplibconfig");
+    exports.util = util_1.Util;
+    exports.sp = new rest_1.Rest();
+    exports.storage = new storage_1.PnPClientStorage();
+    exports.config = new configuration_1.Settings();
+    exports.log = logging_1.Logger;
+    exports.setup = pnplibconfig_1.setRuntimeConfig;
+    var Def = {
+        config: exports.config,
+        log: exports.log,
+        setup: exports.setup,
+        sp: exports.sp,
+        storage: exports.storage,
+        util: exports.util,
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = Def;
+});
+
+},{"./configuration/configuration":2,"./configuration/pnplibconfig":3,"./sharepoint/rest/rest":22,"./utils/logging":35,"./utils/storage":36,"./utils/util":37}],11:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -236,88 +538,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./roles", "./Queryable"], factory);
+        define(["require", "exports", "./queryable"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var roles_1 = require("./roles");
-    var Queryable_1 = require("./Queryable");
-    var QueryableSecurable = (function (_super) {
-        __extends(QueryableSecurable, _super);
-        function QueryableSecurable() {
-            _super.apply(this, arguments);
-        }
-        Object.defineProperty(QueryableSecurable.prototype, "roleAssignments", {
-            get: function () {
-                return new roles_1.RoleAssignments(this);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(QueryableSecurable.prototype, "firstUniqueAncestorSecurableObject", {
-            get: function () {
-                this.append("FirstUniqueAncestorSecurableObject");
-                return new Queryable_1.QueryableInstance(this);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        QueryableSecurable.prototype.getUserEffectivePermissions = function (loginName) {
-            this.append("getUserEffectivePermissions(@user)");
-            this._query.add("@user", "'" + encodeURIComponent(loginName) + "'");
-            return new Queryable_1.Queryable(this);
-        };
-        QueryableSecurable.prototype.breakRoleInheritance = function (copyRoleAssignments, clearSubscopes) {
-            if (copyRoleAssignments === void 0) { copyRoleAssignments = false; }
-            if (clearSubscopes === void 0) { clearSubscopes = false; }
-            var Breaker = (function (_super) {
-                __extends(Breaker, _super);
-                function Breaker(baseUrl, copy, clear) {
-                    _super.call(this, baseUrl, "breakroleinheritance(copyroleassignments=" + copy + ", clearsubscopes=" + clear + ")");
-                }
-                Breaker.prototype.break = function () {
-                    return this.post();
-                };
-                return Breaker;
-            }(Queryable_1.Queryable));
-            var b = new Breaker(this, copyRoleAssignments, clearSubscopes);
-            return b.break();
-        };
-        QueryableSecurable.prototype.resetRoleInheritance = function () {
-            var Resetter = (function (_super) {
-                __extends(Resetter, _super);
-                function Resetter(baseUrl) {
-                    _super.call(this, baseUrl, "resetroleinheritance");
-                }
-                Resetter.prototype.reset = function () {
-                    return this.post();
-                };
-                return Resetter;
-            }(Queryable_1.Queryable));
-            var r = new Resetter(this);
-            return r.reset();
-        };
-        return QueryableSecurable;
-    }(Queryable_1.QueryableInstance));
-    exports.QueryableSecurable = QueryableSecurable;
-});
-
-},{"./Queryable":1,"./roles":15}],3:[function(require,module,exports){
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var ContentTypes = (function (_super) {
         __extends(ContentTypes, _super);
         function ContentTypes(baseUrl, path) {
@@ -330,7 +555,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return ct;
         };
         return ContentTypes;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.ContentTypes = ContentTypes;
     var ContentType = (function (_super) {
         __extends(ContentType, _super);
@@ -339,180 +564,178 @@ var __extends = (this && this.__extends) || function (d, b) {
         }
         Object.defineProperty(ContentType.prototype, "descriptionResource", {
             get: function () {
-                return new Queryable_1.Queryable(this, "descriptionResource");
+                return new queryable_1.Queryable(this, "descriptionResource");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "fieldLinks", {
             get: function () {
-                return new Queryable_1.Queryable(this, "fieldLinks");
+                return new queryable_1.Queryable(this, "fieldLinks");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "fields", {
             get: function () {
-                return new Queryable_1.Queryable(this, "fields");
+                return new queryable_1.Queryable(this, "fields");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "nameResource", {
             get: function () {
-                return new Queryable_1.Queryable(this, "nameResource");
+                return new queryable_1.Queryable(this, "nameResource");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "parent", {
             get: function () {
-                return new Queryable_1.Queryable(this, "parent");
+                return new queryable_1.Queryable(this, "parent");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "workflowAssociations", {
             get: function () {
-                return new Queryable_1.Queryable(this, "workflowAssociations");
+                return new queryable_1.Queryable(this, "workflowAssociations");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "description", {
             get: function () {
-                return new Queryable_1.Queryable(this, "description");
+                return new queryable_1.Queryable(this, "description");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "displayFormTemplateName", {
             get: function () {
-                return new Queryable_1.Queryable(this, "displayFormTemplateName");
+                return new queryable_1.Queryable(this, "displayFormTemplateName");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "displayFormUrl", {
             get: function () {
-                return new Queryable_1.Queryable(this, "displayFormUrl");
+                return new queryable_1.Queryable(this, "displayFormUrl");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "documentTemplate", {
             get: function () {
-                return new Queryable_1.Queryable(this, "documentTemplate");
+                return new queryable_1.Queryable(this, "documentTemplate");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "documentTemplateUrl", {
             get: function () {
-                return new Queryable_1.Queryable(this, "documentTemplateUrl");
+                return new queryable_1.Queryable(this, "documentTemplateUrl");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "editFormTemplateName", {
             get: function () {
-                return new Queryable_1.Queryable(this, "editFormTemplateName");
+                return new queryable_1.Queryable(this, "editFormTemplateName");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "editFormUrl", {
             get: function () {
-                return new Queryable_1.Queryable(this, "editFormUrl");
+                return new queryable_1.Queryable(this, "editFormUrl");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "group", {
             get: function () {
-                return new Queryable_1.Queryable(this, "group");
+                return new queryable_1.Queryable(this, "group");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "hidden", {
             get: function () {
-                return new Queryable_1.Queryable(this, "hidden");
+                return new queryable_1.Queryable(this, "hidden");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "jsLink", {
             get: function () {
-                return new Queryable_1.Queryable(this, "jsLink");
+                return new queryable_1.Queryable(this, "jsLink");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "name", {
             get: function () {
-                return new Queryable_1.Queryable(this, "name");
+                return new queryable_1.Queryable(this, "name");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "newFormTemplateName", {
             get: function () {
-                return new Queryable_1.Queryable(this, "newFormTemplateName");
+                return new queryable_1.Queryable(this, "newFormTemplateName");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "newFormUrl", {
             get: function () {
-                return new Queryable_1.Queryable(this, "newFormUrl");
+                return new queryable_1.Queryable(this, "newFormUrl");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "readOnly", {
             get: function () {
-                return new Queryable_1.Queryable(this, "readOnly");
+                return new queryable_1.Queryable(this, "readOnly");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "schemaXml", {
             get: function () {
-                return new Queryable_1.Queryable(this, "schemaXml");
+                return new queryable_1.Queryable(this, "schemaXml");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "scope", {
             get: function () {
-                return new Queryable_1.Queryable(this, "scope");
+                return new queryable_1.Queryable(this, "scope");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "sealed", {
             get: function () {
-                return new Queryable_1.Queryable(this, "sealed");
+                return new queryable_1.Queryable(this, "sealed");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(ContentType.prototype, "stringId", {
             get: function () {
-                return new Queryable_1.Queryable(this, "stringId");
+                return new queryable_1.Queryable(this, "stringId");
             },
             enumerable: true,
             configurable: true
         });
         return ContentType;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.ContentType = ContentType;
 });
 
-},{"./Queryable":1}],4:[function(require,module,exports){
-arguments[4][3][0].apply(exports,arguments)
-},{"./Queryable":1,"dup":3}],5:[function(require,module,exports){
+},{"./queryable":19}],12:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -905,7 +1128,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Field = Field;
 });
 
-},{"../../utils/util":40,"./queryable":12,"./types":21}],6:[function(require,module,exports){
+},{"../../utils/util":37,"./queryable":19,"./types":29}],13:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -916,11 +1139,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./items"], factory);
+        define(["require", "exports", "./queryable", "./items"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var items_1 = require("./items");
     var Files = (function (_super) {
         __extends(Files, _super);
@@ -955,7 +1178,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Files;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.Files = Files;
     var File = (function (_super) {
         __extends(File, _super);
@@ -964,70 +1187,70 @@ var __extends = (this && this.__extends) || function (d, b) {
         }
         Object.defineProperty(File.prototype, "author", {
             get: function () {
-                return new Queryable_1.Queryable(this, "author");
+                return new queryable_1.Queryable(this, "author");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "checkedOutByUser", {
             get: function () {
-                return new Queryable_1.Queryable(this, "checkedOutByUser");
+                return new queryable_1.Queryable(this, "checkedOutByUser");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "checkInComment", {
             get: function () {
-                return new Queryable_1.Queryable(this, "checkInComment");
+                return new queryable_1.Queryable(this, "checkInComment");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "checkOutType", {
             get: function () {
-                return new Queryable_1.Queryable(this, "checkOutType");
+                return new queryable_1.Queryable(this, "checkOutType");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "contentTag", {
             get: function () {
-                return new Queryable_1.Queryable(this, "contentTag");
+                return new queryable_1.Queryable(this, "contentTag");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "customizedPageStatus", {
             get: function () {
-                return new Queryable_1.Queryable(this, "customizedPageStatus");
+                return new queryable_1.Queryable(this, "customizedPageStatus");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "eTag", {
             get: function () {
-                return new Queryable_1.Queryable(this, "eTag");
+                return new queryable_1.Queryable(this, "eTag");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "exists", {
             get: function () {
-                return new Queryable_1.Queryable(this, "exists");
+                return new queryable_1.Queryable(this, "exists");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "length", {
             get: function () {
-                return new Queryable_1.Queryable(this, "length");
+                return new queryable_1.Queryable(this, "length");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "level", {
             get: function () {
-                return new Queryable_1.Queryable(this, "level");
+                return new queryable_1.Queryable(this, "level");
             },
             enumerable: true,
             configurable: true
@@ -1041,77 +1264,77 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(File.prototype, "lockedByUser", {
             get: function () {
-                return new Queryable_1.Queryable(this, "lockedByUser");
+                return new queryable_1.Queryable(this, "lockedByUser");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "majorVersion", {
             get: function () {
-                return new Queryable_1.Queryable(this, "majorVersion");
+                return new queryable_1.Queryable(this, "majorVersion");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "minorVersion", {
             get: function () {
-                return new Queryable_1.Queryable(this, "minorVersion");
+                return new queryable_1.Queryable(this, "minorVersion");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "modifiedBy", {
             get: function () {
-                return new Queryable_1.Queryable(this, "modifiedBy");
+                return new queryable_1.Queryable(this, "modifiedBy");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "name", {
             get: function () {
-                return new Queryable_1.Queryable(this, "name");
+                return new queryable_1.Queryable(this, "name");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "serverRelativeUrl", {
             get: function () {
-                return new Queryable_1.Queryable(this, "serverRelativeUrl");
+                return new queryable_1.Queryable(this, "serverRelativeUrl");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "timeCreated", {
             get: function () {
-                return new Queryable_1.Queryable(this, "timeCreated");
+                return new queryable_1.Queryable(this, "timeCreated");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "timeLastModified", {
             get: function () {
-                return new Queryable_1.Queryable(this, "timeLastModified");
+                return new queryable_1.Queryable(this, "timeLastModified");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "title", {
             get: function () {
-                return new Queryable_1.Queryable(this, "title");
+                return new queryable_1.Queryable(this, "title");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "uiVersion", {
             get: function () {
-                return new Queryable_1.Queryable(this, "uiVersion");
+                return new queryable_1.Queryable(this, "uiVersion");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(File.prototype, "uiVersionLabel", {
             get: function () {
-                return new Queryable_1.Queryable(this, "uiVersionLabel");
+                return new queryable_1.Queryable(this, "uiVersionLabel");
             },
             enumerable: true,
             configurable: true
@@ -1125,7 +1348,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(File.prototype, "value", {
             get: function () {
-                return new Queryable_1.Queryable(this, "$value");
+                return new queryable_1.Queryable(this, "$value");
             },
             enumerable: true,
             configurable: true
@@ -1175,14 +1398,14 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         File.prototype.getLimitedWebPartManager = function (scope) {
             if (scope === void 0) { scope = WebPartsPersonalizationScope.User; }
-            return new Queryable_1.Queryable(this, "getLimitedWebPartManager(scope=" + scope + ")");
+            return new queryable_1.Queryable(this, "getLimitedWebPartManager(scope=" + scope + ")");
         };
         File.prototype.moveTo = function (url, moveOperations) {
             if (moveOperations === void 0) { moveOperations = MoveOperations.Overwrite; }
             return new File(this, "moveTo(newurl='" + url + "',flags=" + moveOperations + ")").post();
         };
         File.prototype.openBinaryStream = function () {
-            return new Queryable_1.Queryable(this, "openBinaryStream");
+            return new queryable_1.Queryable(this, "openBinaryStream");
         };
         File.prototype.publish = function (comment) {
             if (comment === void 0) { comment = ""; }
@@ -1205,7 +1428,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return new File(this, "unpublish(comment='" + comment + "')").post();
         };
         return File;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.File = File;
     var Versions = (function (_super) {
         __extends(Versions, _super);
@@ -1231,7 +1454,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return new Versions(this, "restoreByLabel(versionlabel='" + label + "')").post();
         };
         return Versions;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.Versions = Versions;
     var Version = (function (_super) {
         __extends(Version, _super);
@@ -1240,56 +1463,56 @@ var __extends = (this && this.__extends) || function (d, b) {
         }
         Object.defineProperty(Version.prototype, "checkInComment", {
             get: function () {
-                return new Queryable_1.Queryable(this, "checkInComment");
+                return new queryable_1.Queryable(this, "checkInComment");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "created", {
             get: function () {
-                return new Queryable_1.Queryable(this, "created");
+                return new queryable_1.Queryable(this, "created");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "createdBy", {
             get: function () {
-                return new Queryable_1.Queryable(this, "createdBy");
+                return new queryable_1.Queryable(this, "createdBy");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "id", {
             get: function () {
-                return new Queryable_1.Queryable(this, "id");
+                return new queryable_1.Queryable(this, "id");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "isCurrentVersion", {
             get: function () {
-                return new Queryable_1.Queryable(this, "isCurrentVersion");
+                return new queryable_1.Queryable(this, "isCurrentVersion");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "size", {
             get: function () {
-                return new Queryable_1.Queryable(this, "size");
+                return new queryable_1.Queryable(this, "size");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "url", {
             get: function () {
-                return new Queryable_1.Queryable(this, "url");
+                return new queryable_1.Queryable(this, "url");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Version.prototype, "versionLabel", {
             get: function () {
-                return new Queryable_1.Queryable(this, "versionLabel");
+                return new queryable_1.Queryable(this, "versionLabel");
             },
             enumerable: true,
             configurable: true
@@ -1304,7 +1527,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Version;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.Version = Version;
     (function (CheckinType) {
         CheckinType[CheckinType["Minor"] = 0] = "Minor";
@@ -1330,7 +1553,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     var TemplateFileType = exports.TemplateFileType;
 });
 
-},{"./Queryable":1,"./items":8}],7:[function(require,module,exports){
+},{"./items":15,"./queryable":19}],14:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1341,11 +1564,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./files", "./items"], factory);
+        define(["require", "exports", "./queryable", "./files", "./items"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var files_1 = require("./files");
     var items_1 = require("./items");
     var Folders = (function (_super) {
@@ -1369,7 +1592,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Folders;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.Folders = Folders;
     var Folder = (function (_super) {
         __extends(Folder, _super);
@@ -1378,7 +1601,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         }
         Object.defineProperty(Folder.prototype, "contentTypeOrder", {
             get: function () {
-                return new Queryable_1.QueryableCollection(this, "contentTypeOrder");
+                return new queryable_1.QueryableCollection(this, "contentTypeOrder");
             },
             enumerable: true,
             configurable: true
@@ -1399,7 +1622,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(Folder.prototype, "itemCount", {
             get: function () {
-                return new Queryable_1.Queryable(this, "itemCount");
+                return new queryable_1.Queryable(this, "itemCount");
             },
             enumerable: true,
             configurable: true
@@ -1413,7 +1636,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(Folder.prototype, "name", {
             get: function () {
-                return new Queryable_1.Queryable(this, "name");
+                return new queryable_1.Queryable(this, "name");
             },
             enumerable: true,
             configurable: true
@@ -1427,28 +1650,28 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(Folder.prototype, "properties", {
             get: function () {
-                return new Queryable_1.QueryableInstance(this, "properties");
+                return new queryable_1.QueryableInstance(this, "properties");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Folder.prototype, "serverRelativeUrl", {
             get: function () {
-                return new Queryable_1.Queryable(this, "serverRelativeUrl");
+                return new queryable_1.Queryable(this, "serverRelativeUrl");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Folder.prototype, "uniqueContentTypeOrder", {
             get: function () {
-                return new Queryable_1.QueryableCollection(this, "uniqueContentTypeOrder");
+                return new queryable_1.QueryableCollection(this, "uniqueContentTypeOrder");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Folder.prototype, "welcomePage", {
             get: function () {
-                return new Queryable_1.Queryable(this, "welcomePage");
+                return new queryable_1.Queryable(this, "welcomePage");
             },
             enumerable: true,
             configurable: true
@@ -1466,11 +1689,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             return new Folder(this, "recycle").post();
         };
         return Folder;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.Folder = Folder;
 });
 
-},{"./Queryable":1,"./files":6,"./items":8}],8:[function(require,module,exports){
+},{"./files":13,"./items":15,"./queryable":19}],15:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1481,12 +1704,12 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./QueryableSecurable", "./folders", "./contenttypes", "../../utils/util", "./odata"], factory);
+        define(["require", "exports", "./queryable", "./queryablesecurable", "./folders", "./contenttypes", "../../utils/util", "./odata"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
-    var QueryableSecurable_1 = require("./QueryableSecurable");
+    var queryable_1 = require("./queryable");
+    var queryablesecurable_1 = require("./queryablesecurable");
     var folders_1 = require("./folders");
     var contenttypes_1 = require("./contenttypes");
     var util_1 = require("../../utils/util");
@@ -1512,7 +1735,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         Items.prototype.add = function (properties) {
             var _this = this;
             if (properties === void 0) { properties = {}; }
-            var parentList = this.getParent(Queryable_1.QueryableInstance);
+            var parentList = this.getParent(queryable_1.QueryableInstance);
             return parentList.select("ListItemEntityTypeFullName").getAs().then(function (d) {
                 var postBody = JSON.stringify(util_1.Util.extend({
                     "__metadata": { "type": d.ListItemEntityTypeFullName },
@@ -1526,7 +1749,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Items;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.Items = Items;
     var PagedItemCollectionParser = (function (_super) {
         __extends(PagedItemCollectionParser, _super);
@@ -1545,7 +1768,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         }
         Object.defineProperty(Item.prototype, "attachmentFiles", {
             get: function () {
-                return new Queryable_1.QueryableCollection(this, "AttachmentFiles");
+                return new queryable_1.QueryableCollection(this, "AttachmentFiles");
             },
             enumerable: true,
             configurable: true
@@ -1559,35 +1782,35 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(Item.prototype, "effectiveBasePermissions", {
             get: function () {
-                return new Queryable_1.Queryable(this, "EffectiveBasePermissions");
+                return new queryable_1.Queryable(this, "EffectiveBasePermissions");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Item.prototype, "effectiveBasePermissionsForUI", {
             get: function () {
-                return new Queryable_1.Queryable(this, "EffectiveBasePermissionsForUI");
+                return new queryable_1.Queryable(this, "EffectiveBasePermissionsForUI");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Item.prototype, "fieldValuesAsHTML", {
             get: function () {
-                return new Queryable_1.QueryableInstance(this, "FieldValuesAsHTML");
+                return new queryable_1.QueryableInstance(this, "FieldValuesAsHTML");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Item.prototype, "fieldValuesAsText", {
             get: function () {
-                return new Queryable_1.QueryableInstance(this, "FieldValuesAsText");
+                return new queryable_1.QueryableInstance(this, "FieldValuesAsText");
             },
             enumerable: true,
             configurable: true
         });
         Object.defineProperty(Item.prototype, "fieldValuesForEdit", {
             get: function () {
-                return new Queryable_1.QueryableInstance(this, "FieldValuesForEdit");
+                return new queryable_1.QueryableInstance(this, "FieldValuesForEdit");
             },
             enumerable: true,
             configurable: true
@@ -1602,7 +1825,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         Item.prototype.update = function (properties, eTag) {
             var _this = this;
             if (eTag === void 0) { eTag = "*"; }
-            var parentList = this.getParent(Queryable_1.QueryableInstance, this.parentUrl.substr(0, this.parentUrl.lastIndexOf("/")));
+            var parentList = this.getParent(queryable_1.QueryableInstance, this.parentUrl.substr(0, this.parentUrl.lastIndexOf("/")));
             return parentList.select("ListItemEntityTypeFullName").getAs().then(function (d) {
                 var postBody = JSON.stringify(util_1.Util.extend({
                     "__metadata": { "type": d.ListItemEntityTypeFullName },
@@ -1641,7 +1864,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return item.post({ body: postBody });
         };
         return Item;
-    }(QueryableSecurable_1.QueryableSecurable));
+    }(queryablesecurable_1.QueryableSecurable));
     exports.Item = Item;
     var PagedItemCollection = (function () {
         function PagedItemCollection() {
@@ -1673,7 +1896,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.PagedItemCollection = PagedItemCollection;
 });
 
-},{"../../utils/util":40,"./Queryable":1,"./QueryableSecurable":2,"./contenttypes":4,"./folders":7,"./odata":11}],9:[function(require,module,exports){
+},{"../../utils/util":37,"./contenttypes":11,"./folders":14,"./odata":18,"./queryable":19,"./queryablesecurable":20}],16:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1684,7 +1907,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./items", "./views", "./contenttypes", "./fields", "./queryable", "./QueryableSecurable", "../../utils/util", "./usercustomactions"], factory);
+        define(["require", "exports", "./items", "./views", "./contenttypes", "./fields", "./queryable", "./queryablesecurable", "../../utils/util", "./usercustomactions"], factory);
     }
 })(function (require, exports) {
     "use strict";
@@ -1693,7 +1916,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     var contenttypes_1 = require("./contenttypes");
     var fields_1 = require("./fields");
     var queryable_1 = require("./queryable");
-    var QueryableSecurable_1 = require("./QueryableSecurable");
+    var queryablesecurable_1 = require("./queryablesecurable");
     var util_1 = require("../../utils/util");
     var usercustomactions_1 = require("./usercustomactions");
     var Lists = (function (_super) {
@@ -1909,11 +2132,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             return q.post();
         };
         return List;
-    }(QueryableSecurable_1.QueryableSecurable));
+    }(queryablesecurable_1.QueryableSecurable));
     exports.List = List;
 });
 
-},{"../../utils/util":40,"./QueryableSecurable":2,"./contenttypes":4,"./fields":5,"./items":8,"./queryable":12,"./usercustomactions":22,"./views":24}],10:[function(require,module,exports){
+},{"../../utils/util":37,"./contenttypes":11,"./fields":12,"./items":15,"./queryable":19,"./queryablesecurable":20,"./usercustomactions":30,"./views":32}],17:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1955,7 +2178,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Navigation = Navigation;
 });
 
-},{"./queryable":12,"./quickLaunch":13,"./topNavigationBar":20}],11:[function(require,module,exports){
+},{"./queryable":19,"./quickLaunch":21,"./topNavigationBar":28}],18:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -1966,11 +2189,12 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../../utils/util"], factory);
+        define(["require", "exports", "../../utils/util", "../../utils/logging"], factory);
     }
 })(function (require, exports) {
     "use strict";
     var util_1 = require("../../utils/util");
+    var logging_1 = require("../../utils/logging");
     var ODataParserBase = (function () {
         function ODataParserBase() {
         }
@@ -2027,7 +2251,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         ODataEntityParserImpl.prototype.parse = function (r) {
             var _this = this;
             return _super.prototype.parse.call(this, r).then(function (d) {
-                var o = new _this.factory(util_1.Util.combinePaths("_api", d["odata.editLink"]), null);
+                var o = new _this.factory(getEntityUrl(d), null);
                 return util_1.Util.extend(o, d);
             });
         };
@@ -2043,13 +2267,25 @@ var __extends = (this && this.__extends) || function (d, b) {
             var _this = this;
             return _super.prototype.parse.call(this, r).then(function (d) {
                 return d.map(function (v) {
-                    var o = new _this.factory(util_1.Util.combinePaths("_api", v["odata.editLink"]), null);
+                    var o = new _this.factory(getEntityUrl(v), null);
                     return util_1.Util.extend(o, v);
                 });
             });
         };
         return ODataEntityArrayParserImpl;
     }(ODataParserBase));
+    function getEntityUrl(entity) {
+        if (entity.hasOwnProperty("__metadata")) {
+            return entity.__metadata.uri;
+        }
+        else if (entity.hasOwnProperty("odata.editLink")) {
+            return util_1.Util.combinePaths("_api", entity["odata.editLink"]);
+        }
+        else {
+            logging_1.Logger.write("No uri information found in ODataEntity parsing, chaining will fail for this object.", logging_1.Logger.LogLevel.Warning);
+            return "";
+        }
+    }
     exports.ODataRaw = new ODataRawParserImpl();
     function ODataValue() {
         return new ODataValueParserImpl();
@@ -2065,9 +2301,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.ODataEntityArray = ODataEntityArray;
 });
 
-},{"../../utils/util":40}],12:[function(require,module,exports){
-arguments[4][1][0].apply(exports,arguments)
-},{"../../collections/collections":26,"../../net/HttpClient":31,"../../utils/util":40,"./odata":11,"dup":1}],13:[function(require,module,exports){
+},{"../../utils/logging":35,"../../utils/util":37}],19:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2078,22 +2312,321 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable"], factory);
+        define(["require", "exports", "../../utils/util", "../../collections/collections", "../../net/HttpClient", "./odata"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var util_1 = require("../../utils/util");
+    var collections_1 = require("../../collections/collections");
+    var HttpClient_1 = require("../../net/HttpClient");
+    var odata_1 = require("./odata");
+    var Queryable = (function () {
+        function Queryable(baseUrl, path) {
+            this._query = new collections_1.Dictionary();
+            if (typeof baseUrl === "string") {
+                var urlStr = baseUrl;
+                if (urlStr.lastIndexOf("/") < 0) {
+                    this._parentUrl = urlStr;
+                    this._url = util_1.Util.combinePaths(urlStr, path);
+                }
+                else if (urlStr.lastIndexOf("/") > urlStr.lastIndexOf("(")) {
+                    var index = urlStr.lastIndexOf("/");
+                    this._parentUrl = urlStr.slice(0, index);
+                    path = util_1.Util.combinePaths(urlStr.slice(index), path);
+                    this._url = util_1.Util.combinePaths(this._parentUrl, path);
+                }
+                else {
+                    var index = urlStr.lastIndexOf("(");
+                    this._parentUrl = urlStr.slice(0, index);
+                    this._url = util_1.Util.combinePaths(urlStr, path);
+                }
+            }
+            else {
+                var q = baseUrl;
+                this._parentUrl = q._url;
+                var target = q._query.get("@target");
+                if (target !== null) {
+                    this._query.add("@target", target);
+                }
+                this._url = util_1.Util.combinePaths(this._parentUrl, path);
+            }
+        }
+        Queryable.prototype.concat = function (pathPart) {
+            this._url += pathPart;
+        };
+        Queryable.prototype.append = function (pathPart) {
+            this._url = util_1.Util.combinePaths(this._url, pathPart);
+        };
+        Object.defineProperty(Queryable.prototype, "parentUrl", {
+            get: function () {
+                return this._parentUrl;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Queryable.prototype, "query", {
+            get: function () {
+                return this._query;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Queryable.prototype.toUrl = function () {
+            if (!util_1.Util.isUrlAbsolute(this._url)) {
+                if (typeof _spPageContextInfo !== "undefined") {
+                    if (_spPageContextInfo.hasOwnProperty("webAbsoluteUrl")) {
+                        return util_1.Util.combinePaths(_spPageContextInfo.webAbsoluteUrl, this._url);
+                    }
+                    else if (_spPageContextInfo.hasOwnProperty("webServerRelativeUrl")) {
+                        return util_1.Util.combinePaths(_spPageContextInfo.webServerRelativeUrl, this._url);
+                    }
+                }
+            }
+            return this._url;
+        };
+        Queryable.prototype.toUrlAndQuery = function () {
+            var _this = this;
+            var url = this.toUrl();
+            if (this._query.count() > 0) {
+                url += "?";
+                var keys = this._query.getKeys();
+                url += keys.map(function (key, ix, arr) { return (key + "=" + _this._query.get(key)); }).join("&");
+            }
+            return url;
+        };
+        Queryable.prototype.get = function (parser) {
+            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
+            return this.getImpl(parser);
+        };
+        Queryable.prototype.getAs = function (parser) {
+            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
+            return this.getImpl(parser);
+        };
+        Queryable.prototype.post = function (postOptions, parser) {
+            if (postOptions === void 0) { postOptions = {}; }
+            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
+            return this.postImpl(postOptions, parser);
+        };
+        Queryable.prototype.postAs = function (postOptions, parser) {
+            if (postOptions === void 0) { postOptions = {}; }
+            if (parser === void 0) { parser = new odata_1.ODataDefaultParser(); }
+            return this.postImpl(postOptions, parser);
+        };
+        Queryable.prototype.getParent = function (factory, baseUrl, path) {
+            if (baseUrl === void 0) { baseUrl = this.parentUrl; }
+            var parent = new factory(baseUrl, path);
+            var target = this.query.get("@target");
+            if (target !== null) {
+                parent.query.add("@target", target);
+            }
+            return parent;
+        };
+        Queryable.prototype.getImpl = function (parser) {
+            var client = new HttpClient_1.HttpClient();
+            return client.get(this.toUrlAndQuery()).then(function (response) {
+                if (!response.ok) {
+                    throw "Error making GET request: " + response.statusText;
+                }
+                return parser.parse(response);
+            });
+        };
+        Queryable.prototype.postImpl = function (postOptions, parser) {
+            var client = new HttpClient_1.HttpClient();
+            return client.post(this.toUrlAndQuery(), postOptions).then(function (response) {
+                if (!response.ok) {
+                    throw "Error making POST request: " + response.statusText;
+                }
+                if ((response.headers.has("Content-Length") && parseFloat(response.headers.get("Content-Length")) === 0)
+                    || response.status === 204) {
+                    return new Promise(function (resolve, reject) { resolve({}); });
+                }
+                return parser.parse(response);
+            });
+        };
+        return Queryable;
+    }());
+    exports.Queryable = Queryable;
+    var QueryableCollection = (function (_super) {
+        __extends(QueryableCollection, _super);
+        function QueryableCollection() {
+            _super.apply(this, arguments);
+        }
+        QueryableCollection.prototype.filter = function (filter) {
+            this._query.add("$filter", filter);
+            return this;
+        };
+        QueryableCollection.prototype.select = function () {
+            var selects = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                selects[_i - 0] = arguments[_i];
+            }
+            this._query.add("$select", selects.join(","));
+            return this;
+        };
+        QueryableCollection.prototype.expand = function () {
+            var expands = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                expands[_i - 0] = arguments[_i];
+            }
+            this._query.add("$expand", expands.join(","));
+            return this;
+        };
+        QueryableCollection.prototype.orderBy = function (orderBy, ascending) {
+            if (ascending === void 0) { ascending = false; }
+            var keys = this._query.getKeys();
+            var query = [];
+            var asc = ascending ? " asc" : "";
+            for (var i = 0; i < keys.length; i++) {
+                if (keys[i] === "$orderby") {
+                    query.push(this._query.get("$orderby"));
+                    break;
+                }
+            }
+            query.push("" + orderBy + asc);
+            this._query.add("$orderby", query.join(","));
+            return this;
+        };
+        QueryableCollection.prototype.skip = function (skip) {
+            this._query.add("$skip", skip.toString());
+            return this;
+        };
+        QueryableCollection.prototype.top = function (top) {
+            this._query.add("$top", top.toString());
+            return this;
+        };
+        return QueryableCollection;
+    }(Queryable));
+    exports.QueryableCollection = QueryableCollection;
+    var QueryableInstance = (function (_super) {
+        __extends(QueryableInstance, _super);
+        function QueryableInstance() {
+            _super.apply(this, arguments);
+        }
+        QueryableInstance.prototype.select = function () {
+            var selects = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                selects[_i - 0] = arguments[_i];
+            }
+            this._query.add("$select", selects.join(","));
+            return this;
+        };
+        QueryableInstance.prototype.expand = function () {
+            var expands = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                expands[_i - 0] = arguments[_i];
+            }
+            this._query.add("$expand", expands.join(","));
+            return this;
+        };
+        return QueryableInstance;
+    }(Queryable));
+    exports.QueryableInstance = QueryableInstance;
+});
+
+},{"../../collections/collections":1,"../../net/HttpClient":7,"../../utils/util":37,"./odata":18}],20:[function(require,module,exports){
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./roles", "./queryable"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var roles_1 = require("./roles");
+    var queryable_1 = require("./queryable");
+    var QueryableSecurable = (function (_super) {
+        __extends(QueryableSecurable, _super);
+        function QueryableSecurable() {
+            _super.apply(this, arguments);
+        }
+        Object.defineProperty(QueryableSecurable.prototype, "roleAssignments", {
+            get: function () {
+                return new roles_1.RoleAssignments(this);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(QueryableSecurable.prototype, "firstUniqueAncestorSecurableObject", {
+            get: function () {
+                this.append("FirstUniqueAncestorSecurableObject");
+                return new queryable_1.QueryableInstance(this);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        QueryableSecurable.prototype.getUserEffectivePermissions = function (loginName) {
+            this.append("getUserEffectivePermissions(@user)");
+            this._query.add("@user", "'" + encodeURIComponent(loginName) + "'");
+            return new queryable_1.Queryable(this);
+        };
+        QueryableSecurable.prototype.breakRoleInheritance = function (copyRoleAssignments, clearSubscopes) {
+            if (copyRoleAssignments === void 0) { copyRoleAssignments = false; }
+            if (clearSubscopes === void 0) { clearSubscopes = false; }
+            var Breaker = (function (_super) {
+                __extends(Breaker, _super);
+                function Breaker(baseUrl, copy, clear) {
+                    _super.call(this, baseUrl, "breakroleinheritance(copyroleassignments=" + copy + ", clearsubscopes=" + clear + ")");
+                }
+                Breaker.prototype.break = function () {
+                    return this.post();
+                };
+                return Breaker;
+            }(queryable_1.Queryable));
+            var b = new Breaker(this, copyRoleAssignments, clearSubscopes);
+            return b.break();
+        };
+        QueryableSecurable.prototype.resetRoleInheritance = function () {
+            var Resetter = (function (_super) {
+                __extends(Resetter, _super);
+                function Resetter(baseUrl) {
+                    _super.call(this, baseUrl, "resetroleinheritance");
+                }
+                Resetter.prototype.reset = function () {
+                    return this.post();
+                };
+                return Resetter;
+            }(queryable_1.Queryable));
+            var r = new Resetter(this);
+            return r.reset();
+        };
+        return QueryableSecurable;
+    }(queryable_1.QueryableInstance));
+    exports.QueryableSecurable = QueryableSecurable;
+});
+
+},{"./queryable":19,"./roles":23}],21:[function(require,module,exports){
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./queryable"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var queryable_1 = require("./queryable");
     var QuickLaunch = (function (_super) {
         __extends(QuickLaunch, _super);
         function QuickLaunch(baseUrl) {
             _super.call(this, baseUrl, "QuickLaunch");
         }
         return QuickLaunch;
-    }(Queryable_1.Queryable));
+    }(queryable_1.Queryable));
     exports.QuickLaunch = QuickLaunch;
 });
 
-},{"./Queryable":1}],14:[function(require,module,exports){
+},{"./queryable":19}],22:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -2165,7 +2698,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.Rest = Rest;
 });
 
-},{"../../utils/util":40,"./search":16,"./site":17,"./userprofiles":23,"./webs":25}],15:[function(require,module,exports){
+},{"../../utils/util":37,"./search":24,"./site":25,"./userprofiles":31,"./webs":33}],23:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2319,7 +2852,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.RoleDefinitionBindings = RoleDefinitionBindings;
 });
 
-},{"../../utils/util":40,"./queryable":12,"./sitegroups":18}],16:[function(require,module,exports){
+},{"../../utils/util":37,"./queryable":19,"./sitegroups":26}],24:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2330,11 +2863,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable"], factory);
+        define(["require", "exports", "./queryable"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var Search = (function (_super) {
         __extends(Search, _super);
         function Search(baseUrl, path) {
@@ -2368,7 +2901,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Search;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.Search = Search;
     var SearchResults = (function () {
         function SearchResults(response) {
@@ -2429,7 +2962,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     var QueryPropertyValueType = exports.QueryPropertyValueType;
 });
 
-},{"./Queryable":1}],17:[function(require,module,exports){
+},{"./queryable":19}],25:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2440,11 +2973,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./webs", "./usercustomactions"], factory);
+        define(["require", "exports", "./queryable", "./webs", "./usercustomactions"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var webs_1 = require("./webs");
     var usercustomactions_1 = require("./usercustomactions");
     var Site = (function (_super) {
@@ -2472,21 +3005,21 @@ var __extends = (this && this.__extends) || function (d, b) {
             return q.post();
         };
         Site.prototype.getDocumentLibraries = function (absoluteWebUrl) {
-            var q = new Queryable_1.Queryable("_api/sp.web.getdocumentlibraries(@v)");
+            var q = new queryable_1.Queryable("_api/sp.web.getdocumentlibraries(@v)");
             q.query.add("@v", "'" + absoluteWebUrl + "'");
             return q.get();
         };
         Site.prototype.getWebUrlFromPageUrl = function (absolutePageUrl) {
-            var q = new Queryable_1.Queryable("_api/sp.web.getweburlfrompageurl(@v)");
+            var q = new queryable_1.Queryable("_api/sp.web.getweburlfrompageurl(@v)");
             q.query.add("@v", "'" + absolutePageUrl + "'");
             return q.get();
         };
         return Site;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.Site = Site;
 });
 
-},{"./Queryable":1,"./usercustomactions":22,"./webs":25}],18:[function(require,module,exports){
+},{"./queryable":19,"./usercustomactions":30,"./webs":33}],26:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2497,11 +3030,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./siteusers", "../../utils/util"], factory);
+        define(["require", "exports", "./queryable", "./siteusers", "../../utils/util"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var siteusers_1 = require("./siteusers");
     var util_1 = require("../../utils/util");
     (function (PrincipalType) {
@@ -2546,7 +3079,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return g.post();
         };
         return SiteGroups;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.SiteGroups = SiteGroups;
     var SiteGroup = (function (_super) {
         __extends(SiteGroup, _super);
@@ -2580,11 +3113,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return SiteGroup;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.SiteGroup = SiteGroup;
 });
 
-},{"../../utils/util":40,"./Queryable":1,"./siteusers":19}],19:[function(require,module,exports){
+},{"../../utils/util":37,"./queryable":19,"./siteusers":27}],27:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2595,11 +3128,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./sitegroups", "../../utils/util"], factory);
+        define(["require", "exports", "./queryable", "./sitegroups", "../../utils/util"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var sitegroups_1 = require("./sitegroups");
     var util_1 = require("../../utils/util");
     var SiteUsers = (function (_super) {
@@ -2635,7 +3168,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return this.post({ body: postBody }).then(function (data) { return _this.getByLoginName(loginName); });
         };
         return SiteUsers;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.SiteUsers = SiteUsers;
     var SiteUser = (function (_super) {
         __extends(SiteUser, _super);
@@ -2672,11 +3205,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return SiteUser;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.SiteUser = SiteUser;
 });
 
-},{"../../utils/util":40,"./Queryable":1,"./sitegroups":18}],20:[function(require,module,exports){
+},{"../../utils/util":37,"./queryable":19,"./sitegroups":26}],28:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2687,22 +3220,22 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable"], factory);
+        define(["require", "exports", "./queryable"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var TopNavigationBar = (function (_super) {
         __extends(TopNavigationBar, _super);
         function TopNavigationBar(baseUrl) {
             _super.call(this, baseUrl, "TopNavigationBar");
         }
         return TopNavigationBar;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.TopNavigationBar = TopNavigationBar;
 });
 
-},{"./Queryable":1}],21:[function(require,module,exports){
+},{"./queryable":19}],29:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -2801,7 +3334,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     var PrincipalType = exports.PrincipalType;
 });
 
-},{}],22:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2871,7 +3404,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     exports.UserCustomAction = UserCustomAction;
 });
 
-},{"../../utils/util":40,"./queryable":12}],23:[function(require,module,exports){
+},{"../../utils/util":37,"./queryable":19}],31:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -2882,11 +3415,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "../../utils/files", "./odata"], factory);
+        define(["require", "exports", "./queryable", "../../utils/files", "./odata"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var FileUtil = require("../../utils/files");
     var odata_1 = require("./odata");
     var UserProfileQuery = (function (_super) {
@@ -2934,7 +3467,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         Object.defineProperty(UserProfileQuery.prototype, "myFollowers", {
             get: function () {
-                return new Queryable_1.QueryableCollection(this, "getmyfollowers");
+                return new queryable_1.QueryableCollection(this, "getmyfollowers");
             },
             enumerable: true,
             configurable: true
@@ -3020,7 +3553,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             return this.profileLoader.shareAllSocialData(share);
         };
         return UserProfileQuery;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.UserProfileQuery = UserProfileQuery;
     var ProfileLoader = (function (_super) {
         __extends(ProfileLoader, _super);
@@ -3061,10 +3594,10 @@ var __extends = (this && this.__extends) || function (d, b) {
             return q.post();
         };
         return ProfileLoader;
-    }(Queryable_1.Queryable));
+    }(queryable_1.Queryable));
 });
 
-},{"../../utils/files":37,"./Queryable":1,"./odata":11}],24:[function(require,module,exports){
+},{"../../utils/files":34,"./odata":18,"./queryable":19}],32:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -3075,11 +3608,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "../../utils/util"], factory);
+        define(["require", "exports", "./queryable", "../../utils/util"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
+    var queryable_1 = require("./queryable");
     var util_1 = require("../../utils/util");
     var Views = (function (_super) {
         __extends(Views, _super);
@@ -3111,7 +3644,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Views;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.Views = Views;
     var View = (function (_super) {
         __extends(View, _super);
@@ -3150,11 +3683,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         View.prototype.renderAsHtml = function () {
-            var q = new Queryable_1.Queryable(this, "renderashtml");
+            var q = new queryable_1.Queryable(this, "renderashtml");
             return q.get();
         };
         return View;
-    }(Queryable_1.QueryableInstance));
+    }(queryable_1.QueryableInstance));
     exports.View = View;
     var ViewFields = (function (_super) {
         __extends(ViewFields, _super);
@@ -3163,7 +3696,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             _super.call(this, baseUrl, path);
         }
         ViewFields.prototype.getSchemaXml = function () {
-            var q = new Queryable_1.Queryable(this, "schemaxml");
+            var q = new queryable_1.Queryable(this, "schemaxml");
             return q.get();
         };
         ViewFields.prototype.add = function (fieldTitleOrInternalName) {
@@ -3184,11 +3717,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             return q.post();
         };
         return ViewFields;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.ViewFields = ViewFields;
 });
 
-},{"../../utils/util":40,"./Queryable":1}],25:[function(require,module,exports){
+},{"../../utils/util":37,"./queryable":19}],33:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -3199,16 +3732,16 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Queryable", "./QueryableSecurable", "./lists", "./navigation", "./sitegroups", "./contentTypes", "./folders", "./roles", "./files", "../../utils/util", "./lists", "./siteusers", "./usercustomactions"], factory);
+        define(["require", "exports", "./queryable", "./queryablesecurable", "./lists", "./navigation", "./sitegroups", "./contenttypes", "./folders", "./roles", "./files", "../../utils/util", "./lists", "./siteusers", "./usercustomactions"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var Queryable_1 = require("./Queryable");
-    var QueryableSecurable_1 = require("./QueryableSecurable");
+    var queryable_1 = require("./queryable");
+    var queryablesecurable_1 = require("./queryablesecurable");
     var lists_1 = require("./lists");
     var navigation_1 = require("./navigation");
     var sitegroups_1 = require("./sitegroups");
-    var contentTypes_1 = require("./contentTypes");
+    var contenttypes_1 = require("./contenttypes");
     var folders_1 = require("./folders");
     var roles_1 = require("./roles");
     var files_1 = require("./files");
@@ -3251,7 +3784,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             });
         };
         return Webs;
-    }(Queryable_1.QueryableCollection));
+    }(queryable_1.QueryableCollection));
     exports.Webs = Webs;
     var Web = (function (_super) {
         __extends(Web, _super);
@@ -3268,7 +3801,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         });
         Object.defineProperty(Web.prototype, "contentTypes", {
             get: function () {
-                return new contentTypes_1.ContentTypes(this);
+                return new contenttypes_1.ContentTypes(this);
             },
             enumerable: true,
             configurable: true
@@ -3384,7 +3917,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         Web.prototype.availableWebTemplates = function (language, includeCrossLanugage) {
             if (language === void 0) { language = 1033; }
             if (includeCrossLanugage === void 0) { includeCrossLanugage = true; }
-            return new Queryable_1.QueryableCollection(this, "getavailablewebtemplates(lcid=" + language + ", doincludecrosslanguage=" + includeCrossLanugage + ")");
+            return new queryable_1.QueryableCollection(this, "getavailablewebtemplates(lcid=" + language + ", doincludecrosslanguage=" + includeCrossLanugage + ")");
         };
         Web.prototype.getCatalog = function (type) {
             var q = new Web(this, "getcatalog(" + type + ")");
@@ -3400,7 +3933,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         Object.defineProperty(Web.prototype, "customListTemplate", {
             get: function () {
-                return new Queryable_1.QueryableCollection(this, "getcustomlisttemplates");
+                return new queryable_1.QueryableCollection(this, "getcustomlisttemplates");
             },
             enumerable: true,
             configurable: true
@@ -3415,749 +3948,11 @@ var __extends = (this && this.__extends) || function (d, b) {
             return q.get();
         };
         return Web;
-    }(QueryableSecurable_1.QueryableSecurable));
+    }(queryablesecurable_1.QueryableSecurable));
     exports.Web = Web;
 });
 
-},{"../../utils/util":40,"./Queryable":1,"./QueryableSecurable":2,"./contentTypes":3,"./files":6,"./folders":7,"./lists":9,"./navigation":10,"./roles":15,"./sitegroups":18,"./siteusers":19,"./usercustomactions":22}],26:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../utils/util"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var util_1 = require("../utils/util");
-    var Dictionary = (function () {
-        function Dictionary() {
-            this.keys = [];
-            this.values = [];
-        }
-        Dictionary.prototype.get = function (key) {
-            var index = this.keys.indexOf(key);
-            if (index < 0) {
-                return null;
-            }
-            return this.values[index];
-        };
-        Dictionary.prototype.add = function (key, o) {
-            var index = this.keys.indexOf(key);
-            if (index > -1) {
-                this.values[index] = o;
-            }
-            else {
-                this.keys.push(key);
-                this.values.push(o);
-            }
-        };
-        Dictionary.prototype.merge = function (source) {
-            if (util_1.Util.isFunction(source["getKeys"])) {
-                var sourceAsDictionary = source;
-                var keys = sourceAsDictionary.getKeys();
-                var l = keys.length;
-                for (var i = 0; i < l; i++) {
-                    this.add(keys[i], sourceAsDictionary.get(keys[i]));
-                }
-            }
-            else {
-                var sourceAsHash = source;
-                for (var key in sourceAsHash) {
-                    if (sourceAsHash.hasOwnProperty(key)) {
-                        this.add(key, source[key]);
-                    }
-                }
-            }
-        };
-        Dictionary.prototype.remove = function (key) {
-            var index = this.keys.indexOf(key);
-            if (index < 0) {
-                return null;
-            }
-            var val = this.values[index];
-            this.keys.splice(index, 1);
-            this.values.splice(index, 1);
-            return val;
-        };
-        Dictionary.prototype.getKeys = function () {
-            return this.keys;
-        };
-        Dictionary.prototype.getValues = function () {
-            return this.values;
-        };
-        Dictionary.prototype.clear = function () {
-            this.keys = [];
-            this.values = [];
-        };
-        Dictionary.prototype.count = function () {
-            return this.keys.length;
-        };
-        return Dictionary;
-    }());
-    exports.Dictionary = Dictionary;
-});
-
-},{"../utils/util":40}],27:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../collections/collections", "./providers/providers"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var Collections = require("../collections/collections");
-    var providers = require("./providers/providers");
-    var Settings = (function () {
-        function Settings() {
-            this.Providers = providers;
-            this._settings = new Collections.Dictionary();
-        }
-        Settings.prototype.add = function (key, value) {
-            this._settings.add(key, value);
-        };
-        Settings.prototype.addJSON = function (key, value) {
-            this._settings.add(key, JSON.stringify(value));
-        };
-        Settings.prototype.apply = function (hash) {
-            var _this = this;
-            return new Promise(function (resolve, reject) {
-                try {
-                    _this._settings.merge(hash);
-                    resolve();
-                }
-                catch (e) {
-                    reject(e);
-                }
-            });
-        };
-        Settings.prototype.load = function (provider) {
-            var _this = this;
-            return new Promise(function (resolve, reject) {
-                provider.getConfiguration().then(function (value) {
-                    _this._settings.merge(value);
-                    resolve();
-                }).catch(function (reason) {
-                    reject(reason);
-                });
-            });
-        };
-        Settings.prototype.get = function (key) {
-            return this._settings.get(key);
-        };
-        Settings.prototype.getJSON = function (key) {
-            var o = this.get(key);
-            if (typeof o === "undefined" || o === null) {
-                return o;
-            }
-            return JSON.parse(o);
-        };
-        return Settings;
-    }());
-    exports.Settings = Settings;
-});
-
-},{"../collections/collections":26,"./providers/providers":29}],28:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../../utils/storage"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var storage = require("../../utils/storage");
-    var CachingConfigurationProvider = (function () {
-        function CachingConfigurationProvider(wrappedProvider, cacheKey, cacheStore) {
-            this.wrappedProvider = wrappedProvider;
-            this.store = (cacheStore) ? cacheStore : this.selectPnPCache();
-            this.cacheKey = "_configcache_" + cacheKey;
-        }
-        CachingConfigurationProvider.prototype.getWrappedProvider = function () {
-            return this.wrappedProvider;
-        };
-        CachingConfigurationProvider.prototype.getConfiguration = function () {
-            var _this = this;
-            if ((!this.store) || (!this.store.enabled)) {
-                return this.wrappedProvider.getConfiguration();
-            }
-            var cachedConfig = this.store.get(this.cacheKey);
-            if (cachedConfig) {
-                return new Promise(function (resolve, reject) {
-                    resolve(cachedConfig);
-                });
-            }
-            var providerPromise = this.wrappedProvider.getConfiguration();
-            providerPromise.then(function (providedConfig) {
-                _this.store.put(_this.cacheKey, providedConfig);
-            });
-            return providerPromise;
-        };
-        CachingConfigurationProvider.prototype.selectPnPCache = function () {
-            var pnpCache = new storage.PnPClientStorage();
-            if ((pnpCache.local) && (pnpCache.local.enabled)) {
-                return pnpCache.local;
-            }
-            if ((pnpCache.session) && (pnpCache.session.enabled)) {
-                return pnpCache.session;
-            }
-            throw new Error("Cannot create a caching configuration provider since cache is not available.");
-        };
-        return CachingConfigurationProvider;
-    }());
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.default = CachingConfigurationProvider;
-});
-
-},{"../../utils/storage":39}],29:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./cachingConfigurationProvider", "./spListConfigurationProvider"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var cachingConfigurationProvider_1 = require("./cachingConfigurationProvider");
-    var spListConfigurationProvider_1 = require("./spListConfigurationProvider");
-    exports.CachingConfigurationProvider = cachingConfigurationProvider_1.default;
-    exports.SPListConfigurationProvider = spListConfigurationProvider_1.default;
-});
-
-},{"./cachingConfigurationProvider":28,"./spListConfigurationProvider":30}],30:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./cachingConfigurationProvider"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var cachingConfigurationProvider_1 = require("./cachingConfigurationProvider");
-    var SPListConfigurationProvider = (function () {
-        function SPListConfigurationProvider(sourceWeb, sourceListTitle) {
-            if (sourceListTitle === void 0) { sourceListTitle = "config"; }
-            this.sourceWeb = sourceWeb;
-            this.sourceListTitle = sourceListTitle;
-        }
-        Object.defineProperty(SPListConfigurationProvider.prototype, "web", {
-            get: function () {
-                return this.sourceWeb;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(SPListConfigurationProvider.prototype, "listTitle", {
-            get: function () {
-                return this.sourceListTitle;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        SPListConfigurationProvider.prototype.getConfiguration = function () {
-            return this.web.lists.getByTitle(this.listTitle).items.select("Title", "Value")
-                .getAs().then(function (data) {
-                var configuration = {};
-                data.forEach(function (i) {
-                    configuration[i.Title] = i.Value;
-                });
-                return configuration;
-            });
-        };
-        SPListConfigurationProvider.prototype.asCaching = function () {
-            var cacheKey = "splist_" + this.web.toUrl() + "+" + this.listTitle;
-            return new cachingConfigurationProvider_1.default(this, cacheKey);
-        };
-        return SPListConfigurationProvider;
-    }());
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.default = SPListConfigurationProvider;
-});
-
-},{"./cachingConfigurationProvider":28}],31:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./fetchClient", "./digestCache", "../utils/util"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var fetchClient_1 = require("./fetchClient");
-    var digestCache_1 = require("./digestCache");
-    var util_1 = require("../utils/util");
-    var HttpClient = (function () {
-        function HttpClient(_impl) {
-            if (_impl === void 0) { _impl = new fetchClient_1.FetchClient(); }
-            this._impl = _impl;
-            this._digestCache = new digestCache_1.DigestCache(this);
-        }
-        HttpClient.prototype.fetch = function (url, options) {
-            if (options === void 0) { options = {}; }
-            var self = this;
-            var opts = util_1.Util.extend(options, { cache: "no-cache", credentials: "same-origin" }, true);
-            var headers = new Headers();
-            if (typeof options.headers !== "undefined") {
-                var temp = new Request("", { headers: options.headers });
-                temp.headers.forEach(function (value, name) {
-                    headers.append(name, value);
-                });
-            }
-            if (!headers.has("Accept")) {
-                headers.append("Accept", "application/json");
-            }
-            if (!headers.has("Content-type")) {
-                headers.append("Content-Type", "application/json;odata=verbose;charset=utf-8");
-            }
-            if (!headers.has("X-ClientService-ClientTag")) {
-                headers.append("X-ClientService-ClientTag", "SharePoint.PnP.JavaScriptCore");
-            }
-            opts = util_1.Util.extend(opts, { headers: headers });
-            if (opts.method && opts.method.toUpperCase() !== "GET") {
-                if (!headers.has("X-RequestDigest")) {
-                    var index = url.indexOf("/_api/");
-                    if (index < 0) {
-                        throw new Error("Unable to determine API url");
-                    }
-                    var webUrl = url.substr(0, index);
-                    return this._digestCache.getDigest(webUrl)
-                        .then(function (digest) {
-                        headers.append("X-RequestDigest", digest);
-                        return self.fetchRaw(url, opts);
-                    });
-                }
-            }
-            return self.fetchRaw(url, opts);
-        };
-        HttpClient.prototype.fetchRaw = function (url, options) {
-            var _this = this;
-            if (options === void 0) { options = {}; }
-            var retry = function (ctx) {
-                _this._impl.fetch(url, options).then(function (response) { return ctx.resolve(response); }).catch(function (response) {
-                    var delay = ctx.delay;
-                    if (response.status !== 429 && response.status !== 503) {
-                        ctx.reject(response);
-                    }
-                    ctx.delay *= 2;
-                    ctx.attempts++;
-                    if (ctx.retryCount <= ctx.attempts) {
-                        ctx.reject(response);
-                    }
-                    setTimeout(util_1.Util.getCtxCallback(_this, retry, ctx), delay);
-                });
-            };
-            return new Promise(function (resolve, reject) {
-                var retryContext = {
-                    attempts: 0,
-                    delay: 100,
-                    reject: reject,
-                    resolve: resolve,
-                    retryCount: 7,
-                };
-                retry.call(_this, retryContext);
-            });
-        };
-        HttpClient.prototype.get = function (url, options) {
-            if (options === void 0) { options = {}; }
-            var opts = util_1.Util.extend(options, { method: "GET" });
-            return this.fetch(url, opts);
-        };
-        HttpClient.prototype.post = function (url, options) {
-            if (options === void 0) { options = {}; }
-            var opts = util_1.Util.extend(options, { method: "POST" });
-            return this.fetch(url, opts);
-        };
-        return HttpClient;
-    }());
-    exports.HttpClient = HttpClient;
-});
-
-},{"../utils/util":40,"./digestCache":32,"./fetchClient":33}],32:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "../collections/collections", "../utils/util"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var collections_1 = require("../collections/collections");
-    var util_1 = require("../utils/util");
-    var CachedDigest = (function () {
-        function CachedDigest() {
-        }
-        return CachedDigest;
-    }());
-    exports.CachedDigest = CachedDigest;
-    var DigestCache = (function () {
-        function DigestCache(_httpClient, _digests) {
-            if (_digests === void 0) { _digests = new collections_1.Dictionary(); }
-            this._httpClient = _httpClient;
-            this._digests = _digests;
-        }
-        DigestCache.prototype.getDigest = function (webUrl) {
-            var self = this;
-            var cachedDigest = this._digests.get(webUrl);
-            if (cachedDigest !== null) {
-                var now = new Date();
-                if (now < cachedDigest.expiration) {
-                    return Promise.resolve(cachedDigest.value);
-                }
-            }
-            var url = util_1.Util.combinePaths(webUrl, "/_api/contextinfo");
-            return self._httpClient.fetchRaw(url, {
-                cache: "no-cache",
-                credentials: "same-origin",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-type": "application/json;odata=verbose;charset=utf-8",
-                },
-                method: "POST",
-            }).then(function (response) {
-                return response.json();
-            }).then(function (data) {
-                var newCachedDigest = new CachedDigest();
-                newCachedDigest.value = data.FormDigestValue;
-                var seconds = data.FormDigestTimeoutSeconds;
-                var expiration = new Date();
-                expiration.setTime(expiration.getTime() + 1000 * seconds);
-                newCachedDigest.expiration = expiration;
-                self._digests.add(webUrl, newCachedDigest);
-                return newCachedDigest.value;
-            });
-        };
-        DigestCache.prototype.clear = function () {
-            this._digests.clear();
-        };
-        return DigestCache;
-    }());
-    exports.DigestCache = DigestCache;
-});
-
-},{"../collections/collections":26,"../utils/util":40}],33:[function(require,module,exports){
-(function (global){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var FetchClient = (function () {
-        function FetchClient() {
-        }
-        FetchClient.prototype.fetch = function (url, options) {
-            return global.fetch(url, options);
-        };
-        return FetchClient;
-    }());
-    exports.FetchClient = FetchClient;
-});
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-
-},{}],34:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./utils/Util", "./utils/Storage", "./configuration/configuration", "./utils/logging", "./SharePoint/Rest/rest"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var Util_1 = require("./utils/Util");
-    var Storage_1 = require("./utils/Storage");
-    var configuration_1 = require("./configuration/configuration");
-    var logging_1 = require("./utils/logging");
-    var rest_1 = require("./SharePoint/Rest/rest");
-    exports.util = Util_1.Util;
-    exports.sp = new rest_1.Rest();
-    exports.storage = new Storage_1.PnPClientStorage();
-    exports.config = new configuration_1.Settings();
-    exports.log = logging_1.Logger;
-    var Def = {
-        config: exports.config,
-        log: exports.log,
-        sp: exports.sp,
-        storage: exports.storage,
-        util: exports.util,
-    };
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.default = Def;
-});
-
-},{"./SharePoint/Rest/rest":14,"./configuration/configuration":27,"./utils/Storage":35,"./utils/Util":36,"./utils/logging":38}],35:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./Util"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var Util_1 = require("./Util");
-    var PnPClientStorageWrapper = (function () {
-        function PnPClientStorageWrapper(store, defaultTimeoutMinutes) {
-            this.store = store;
-            this.defaultTimeoutMinutes = defaultTimeoutMinutes;
-            this.defaultTimeoutMinutes = (defaultTimeoutMinutes === void 0) ? 5 : defaultTimeoutMinutes;
-            this.enabled = this.test();
-        }
-        PnPClientStorageWrapper.prototype.get = function (key) {
-            if (!this.enabled) {
-                return null;
-            }
-            var o = this.store.getItem(key);
-            if (o == null) {
-                return o;
-            }
-            var persistable = JSON.parse(o);
-            if (new Date(persistable.expiration) <= new Date()) {
-                this.delete(key);
-                return null;
-            }
-            else {
-                return persistable.value;
-            }
-        };
-        PnPClientStorageWrapper.prototype.put = function (key, o, expire) {
-            if (this.enabled) {
-                this.store.setItem(key, this.createPersistable(o, expire));
-            }
-        };
-        PnPClientStorageWrapper.prototype.delete = function (key) {
-            if (this.enabled) {
-                this.store.removeItem(key);
-            }
-        };
-        PnPClientStorageWrapper.prototype.getOrPut = function (key, getter, expire) {
-            var _this = this;
-            if (!this.enabled) {
-                return getter();
-            }
-            if (!Util_1.Util.isFunction(getter)) {
-                throw "Function expected for parameter 'getter'.";
-            }
-            return new Promise(function (resolve, reject) {
-                var o = _this.get(key);
-                if (o == null) {
-                    getter().then(function (d) {
-                        _this.put(key, d);
-                        resolve(d);
-                    });
-                }
-                else {
-                    resolve(o);
-                }
-            });
-        };
-        PnPClientStorageWrapper.prototype.test = function () {
-            var str = "test";
-            try {
-                this.store.setItem(str, str);
-                this.store.removeItem(str);
-                return true;
-            }
-            catch (e) {
-                return false;
-            }
-        };
-        PnPClientStorageWrapper.prototype.createPersistable = function (o, expire) {
-            if (typeof expire === "undefined") {
-                expire = Util_1.Util.dateAdd(new Date(), "minute", this.defaultTimeoutMinutes);
-            }
-            return JSON.stringify({ expiration: expire, value: o });
-        };
-        return PnPClientStorageWrapper;
-    }());
-    exports.PnPClientStorageWrapper = PnPClientStorageWrapper;
-    var PnPClientStorage = (function () {
-        function PnPClientStorage() {
-            this.local = typeof localStorage !== "undefined" ? new PnPClientStorageWrapper(localStorage) : null;
-            this.session = typeof sessionStorage !== "undefined" ? new PnPClientStorageWrapper(sessionStorage) : null;
-        }
-        return PnPClientStorage;
-    }());
-    exports.PnPClientStorage = PnPClientStorage;
-});
-
-},{"./Util":36}],36:[function(require,module,exports){
-(function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    var Util = (function () {
-        function Util() {
-        }
-        Util.getCtxCallback = function (context, method) {
-            var params = [];
-            for (var _i = 2; _i < arguments.length; _i++) {
-                params[_i - 2] = arguments[_i];
-            }
-            return function () {
-                method.apply(context, params);
-            };
-        };
-        Util.urlParamExists = function (name) {
-            name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-            var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
-            return regex.test(location.search);
-        };
-        Util.getUrlParamByName = function (name) {
-            name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-            var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
-            var results = regex.exec(location.search);
-            return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
-        };
-        Util.getUrlParamBoolByName = function (name) {
-            var p = this.getUrlParamByName(name);
-            var isFalse = (p === "" || /false|0/i.test(p));
-            return !isFalse;
-        };
-        Util.stringInsert = function (target, index, s) {
-            if (index > 0) {
-                return target.substring(0, index) + s + target.substring(index, target.length);
-            }
-            return s + target;
-        };
-        Util.dateAdd = function (date, interval, units) {
-            var ret = new Date(date.toLocaleString());
-            switch (interval.toLowerCase()) {
-                case "year":
-                    ret.setFullYear(ret.getFullYear() + units);
-                    break;
-                case "quarter":
-                    ret.setMonth(ret.getMonth() + 3 * units);
-                    break;
-                case "month":
-                    ret.setMonth(ret.getMonth() + units);
-                    break;
-                case "week":
-                    ret.setDate(ret.getDate() + 7 * units);
-                    break;
-                case "day":
-                    ret.setDate(ret.getDate() + units);
-                    break;
-                case "hour":
-                    ret.setTime(ret.getTime() + units * 3600000);
-                    break;
-                case "minute":
-                    ret.setTime(ret.getTime() + units * 60000);
-                    break;
-                case "second":
-                    ret.setTime(ret.getTime() + units * 1000);
-                    break;
-                default:
-                    ret = undefined;
-                    break;
-            }
-            return ret;
-        };
-        Util.loadStylesheet = function (path, avoidCache) {
-            if (avoidCache) {
-                path += "?" + encodeURIComponent((new Date()).getTime().toString());
-            }
-            var head = document.getElementsByTagName("head");
-            if (head.length > 1) {
-                var e = document.createElement("link");
-                head[0].appendChild(e);
-                e.setAttribute("type", "text/css");
-                e.setAttribute("rel", "stylesheet");
-                e.setAttribute("href", path);
-            }
-        };
-        Util.combinePaths = function () {
-            var paths = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                paths[_i - 0] = arguments[_i];
-            }
-            var parts = [];
-            for (var i = 0; i < paths.length; i++) {
-                if (typeof paths[i] !== "undefined" && paths[i] !== null) {
-                    parts.push(paths[i].replace(/^[\\|\/]/, "").replace(/[\\|\/]$/, ""));
-                }
-            }
-            return parts.join("/").replace(/\\/, "/");
-        };
-        Util.getRandomString = function (chars) {
-            var text = "";
-            var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            for (var i = 0; i < chars; i++) {
-                text += possible.charAt(Math.floor(Math.random() * possible.length));
-            }
-            return text;
-        };
-        Util.getGUID = function () {
-            var d = new Date().getTime();
-            var guid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-                var r = (d + Math.random() * 16) % 16 | 0;
-                d = Math.floor(d / 16);
-                return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
-            });
-            return guid;
-        };
-        Util.isFunction = function (candidateFunction) {
-            return typeof candidateFunction === "function";
-        };
-        Util.isArray = function (array) {
-            if (Array.isArray) {
-                return Array.isArray(array);
-            }
-            return array && typeof array.length === "number" && array.constructor === Array;
-        };
-        Util.stringIsNullOrEmpty = function (s) {
-            return typeof s === "undefined" || s === null || s === "";
-        };
-        Util.extend = function (target, source, noOverwrite) {
-            if (noOverwrite === void 0) { noOverwrite = false; }
-            var result = {};
-            for (var id in target) {
-                result[id] = target[id];
-            }
-            var check = noOverwrite ? function (o, i) { return !o.hasOwnProperty(i); } : function (o, i) { return true; };
-            for (var id in source) {
-                if (check(result, id)) {
-                    result[id] = source[id];
-                }
-            }
-            return result;
-        };
-        Util.applyMixins = function (derivedCtor) {
-            var baseCtors = [];
-            for (var _i = 1; _i < arguments.length; _i++) {
-                baseCtors[_i - 1] = arguments[_i];
-            }
-            baseCtors.forEach(function (baseCtor) {
-                Object.getOwnPropertyNames(baseCtor.prototype).forEach(function (name) {
-                    derivedCtor.prototype[name] = baseCtor.prototype[name];
-                });
-            });
-        };
-        Util.isUrlAbsolute = function (url) {
-            return /^https?:\/\/|^\/\//i.test(url);
-        };
-        return Util;
-    }());
-    exports.Util = Util;
-});
-
-},{}],37:[function(require,module,exports){
+},{"../../utils/util":37,"./contenttypes":11,"./files":13,"./folders":14,"./lists":16,"./navigation":17,"./queryable":19,"./queryablesecurable":20,"./roles":23,"./sitegroups":26,"./siteusers":27,"./usercustomactions":30}],34:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -4193,7 +3988,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     }
 });
 
-},{}],38:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -4389,11 +4184,268 @@ var __extends = (this && this.__extends) || function (d, b) {
     })(Logger = exports.Logger || (exports.Logger = {}));
 });
 
-},{}],39:[function(require,module,exports){
-arguments[4][35][0].apply(exports,arguments)
-},{"./Util":36,"dup":35}],40:[function(require,module,exports){
-arguments[4][36][0].apply(exports,arguments)
-},{"dup":36}]},{},[34])(34)
+},{}],36:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports", "./util"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var util_1 = require("./util");
+    var PnPClientStorageWrapper = (function () {
+        function PnPClientStorageWrapper(store, defaultTimeoutMinutes) {
+            this.store = store;
+            this.defaultTimeoutMinutes = defaultTimeoutMinutes;
+            this.defaultTimeoutMinutes = (defaultTimeoutMinutes === void 0) ? 5 : defaultTimeoutMinutes;
+            this.enabled = this.test();
+        }
+        PnPClientStorageWrapper.prototype.get = function (key) {
+            if (!this.enabled) {
+                return null;
+            }
+            var o = this.store.getItem(key);
+            if (o == null) {
+                return o;
+            }
+            var persistable = JSON.parse(o);
+            if (new Date(persistable.expiration) <= new Date()) {
+                this.delete(key);
+                return null;
+            }
+            else {
+                return persistable.value;
+            }
+        };
+        PnPClientStorageWrapper.prototype.put = function (key, o, expire) {
+            if (this.enabled) {
+                this.store.setItem(key, this.createPersistable(o, expire));
+            }
+        };
+        PnPClientStorageWrapper.prototype.delete = function (key) {
+            if (this.enabled) {
+                this.store.removeItem(key);
+            }
+        };
+        PnPClientStorageWrapper.prototype.getOrPut = function (key, getter, expire) {
+            var _this = this;
+            if (!this.enabled) {
+                return getter();
+            }
+            if (!util_1.Util.isFunction(getter)) {
+                throw "Function expected for parameter 'getter'.";
+            }
+            return new Promise(function (resolve, reject) {
+                var o = _this.get(key);
+                if (o == null) {
+                    getter().then(function (d) {
+                        _this.put(key, d);
+                        resolve(d);
+                    });
+                }
+                else {
+                    resolve(o);
+                }
+            });
+        };
+        PnPClientStorageWrapper.prototype.test = function () {
+            var str = "test";
+            try {
+                this.store.setItem(str, str);
+                this.store.removeItem(str);
+                return true;
+            }
+            catch (e) {
+                return false;
+            }
+        };
+        PnPClientStorageWrapper.prototype.createPersistable = function (o, expire) {
+            if (typeof expire === "undefined") {
+                expire = util_1.Util.dateAdd(new Date(), "minute", this.defaultTimeoutMinutes);
+            }
+            return JSON.stringify({ expiration: expire, value: o });
+        };
+        return PnPClientStorageWrapper;
+    }());
+    exports.PnPClientStorageWrapper = PnPClientStorageWrapper;
+    var PnPClientStorage = (function () {
+        function PnPClientStorage() {
+            this.local = typeof localStorage !== "undefined" ? new PnPClientStorageWrapper(localStorage) : null;
+            this.session = typeof sessionStorage !== "undefined" ? new PnPClientStorageWrapper(sessionStorage) : null;
+        }
+        return PnPClientStorage;
+    }());
+    exports.PnPClientStorage = PnPClientStorage;
+});
+
+},{"./util":37}],37:[function(require,module,exports){
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    var Util = (function () {
+        function Util() {
+        }
+        Util.getCtxCallback = function (context, method) {
+            var params = [];
+            for (var _i = 2; _i < arguments.length; _i++) {
+                params[_i - 2] = arguments[_i];
+            }
+            return function () {
+                method.apply(context, params);
+            };
+        };
+        Util.urlParamExists = function (name) {
+            name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+            var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
+            return regex.test(location.search);
+        };
+        Util.getUrlParamByName = function (name) {
+            name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+            var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
+            var results = regex.exec(location.search);
+            return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+        };
+        Util.getUrlParamBoolByName = function (name) {
+            var p = this.getUrlParamByName(name);
+            var isFalse = (p === "" || /false|0/i.test(p));
+            return !isFalse;
+        };
+        Util.stringInsert = function (target, index, s) {
+            if (index > 0) {
+                return target.substring(0, index) + s + target.substring(index, target.length);
+            }
+            return s + target;
+        };
+        Util.dateAdd = function (date, interval, units) {
+            var ret = new Date(date.toLocaleString());
+            switch (interval.toLowerCase()) {
+                case "year":
+                    ret.setFullYear(ret.getFullYear() + units);
+                    break;
+                case "quarter":
+                    ret.setMonth(ret.getMonth() + 3 * units);
+                    break;
+                case "month":
+                    ret.setMonth(ret.getMonth() + units);
+                    break;
+                case "week":
+                    ret.setDate(ret.getDate() + 7 * units);
+                    break;
+                case "day":
+                    ret.setDate(ret.getDate() + units);
+                    break;
+                case "hour":
+                    ret.setTime(ret.getTime() + units * 3600000);
+                    break;
+                case "minute":
+                    ret.setTime(ret.getTime() + units * 60000);
+                    break;
+                case "second":
+                    ret.setTime(ret.getTime() + units * 1000);
+                    break;
+                default:
+                    ret = undefined;
+                    break;
+            }
+            return ret;
+        };
+        Util.loadStylesheet = function (path, avoidCache) {
+            if (avoidCache) {
+                path += "?" + encodeURIComponent((new Date()).getTime().toString());
+            }
+            var head = document.getElementsByTagName("head");
+            if (head.length > 0) {
+                var e = document.createElement("link");
+                head[0].appendChild(e);
+                e.setAttribute("type", "text/css");
+                e.setAttribute("rel", "stylesheet");
+                e.setAttribute("href", path);
+            }
+        };
+        Util.combinePaths = function () {
+            var paths = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                paths[_i - 0] = arguments[_i];
+            }
+            var parts = [];
+            for (var i = 0; i < paths.length; i++) {
+                if (typeof paths[i] !== "undefined" && paths[i] !== null) {
+                    parts.push(paths[i].replace(/^[\\|\/]/, "").replace(/[\\|\/]$/, ""));
+                }
+            }
+            return parts.join("/").replace(/\\/, "/");
+        };
+        Util.getRandomString = function (chars) {
+            var text = "";
+            var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            for (var i = 0; i < chars; i++) {
+                text += possible.charAt(Math.floor(Math.random() * possible.length));
+            }
+            return text;
+        };
+        Util.getGUID = function () {
+            var d = new Date().getTime();
+            var guid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+                var r = (d + Math.random() * 16) % 16 | 0;
+                d = Math.floor(d / 16);
+                return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+            return guid;
+        };
+        Util.isFunction = function (candidateFunction) {
+            return typeof candidateFunction === "function";
+        };
+        Util.isArray = function (array) {
+            if (Array.isArray) {
+                return Array.isArray(array);
+            }
+            return array && typeof array.length === "number" && array.constructor === Array;
+        };
+        Util.stringIsNullOrEmpty = function (s) {
+            return typeof s === "undefined" || s === null || s === "";
+        };
+        Util.extend = function (target, source, noOverwrite) {
+            if (noOverwrite === void 0) { noOverwrite = false; }
+            var result = {};
+            for (var id in target) {
+                result[id] = target[id];
+            }
+            var check = noOverwrite ? function (o, i) { return !o.hasOwnProperty(i); } : function (o, i) { return true; };
+            for (var id in source) {
+                if (check(result, id)) {
+                    result[id] = source[id];
+                }
+            }
+            return result;
+        };
+        Util.applyMixins = function (derivedCtor) {
+            var baseCtors = [];
+            for (var _i = 1; _i < arguments.length; _i++) {
+                baseCtors[_i - 1] = arguments[_i];
+            }
+            baseCtors.forEach(function (baseCtor) {
+                Object.getOwnPropertyNames(baseCtor.prototype).forEach(function (name) {
+                    derivedCtor.prototype[name] = baseCtor.prototype[name];
+                });
+            });
+        };
+        Util.isUrlAbsolute = function (url) {
+            return /^https?:\/\/|^\/\//i.test(url);
+        };
+        return Util;
+    }());
+    exports.Util = Util;
+});
+
+},{}]},{},[10])(10)
 });
 
 
